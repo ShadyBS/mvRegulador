@@ -6,8 +6,9 @@
 
 /**
  * Buscar usuários/serviços usando filtros
- * @param {Object} params - Parâmetros de busca (ex: nome, cpf, dataNascimento, etc)
- * @returns {Promise<Object>} Lista de usuários/serviços
+ * @endpoint GET /sigss/usuarioServico/listar
+ * @param {Object} params - Parâmetros de busca.
+ * @returns {Promise<Object>}
  */
 export async function buscarUsuarioServico(params) {
   const urlBase =
@@ -25,6 +26,9 @@ export async function buscarUsuarioServico(params) {
     credentials: 'include',
   });
   if (!response.ok) {
+    if (response.headers.get('content-type')?.includes('text/html')) {
+        throw new Error('Sessão expirada. Faça login no portal SIGSS novamente.');
+    }
     throw new Error('Erro ao buscar dados: ' + response.status);
   }
   return response.json();
@@ -32,9 +36,9 @@ export async function buscarUsuarioServico(params) {
 
 /**
  * Buscar usuários por termo genérico (nome, CPF, CNS, etc)
+ * @endpoint GET /sigss/usuarioServico/busca
  * @param {Object} options
- * @param {string} options.searchString - Termo de busca
- * @returns {Promise<Object>} Lista de sugestões
+ * @returns {Promise<Object>}
  */
 export async function fetchBuscarUsuarioGenerico({ searchString }) {
   const url = `http://saude.farroupilha.rs.gov.br/sigss/usuarioServico/busca?searchString=${encodeURIComponent(
@@ -49,6 +53,9 @@ export async function fetchBuscarUsuarioGenerico({ searchString }) {
     credentials: 'include',
   });
   if (!response.ok) {
+    if (response.headers.get('content-type')?.includes('text/html')) {
+        throw new Error('Sessão expirada. Faça login no portal SIGSS novamente.');
+    }
     throw new Error('Erro ao buscar dados: ' + response.status);
   }
   return response.json();
@@ -56,10 +63,9 @@ export async function fetchBuscarUsuarioGenerico({ searchString }) {
 
 /**
  * Buscar detalhes completos do usuário
+ * @endpoint POST /sigss/usuarioServico/visualiza
  * @param {Object} options
- * @param {string} options.idp - isenPK.idp do usuário
- * @param {string} options.ids - isenPK.ids do usuário
- * @returns {Promise<Object>} Dados completos do usuário
+ * @returns {Promise<Object>}
  */
 export async function fetchVisualizaUsuario({ idp, ids }) {
   const url =
@@ -78,36 +84,57 @@ export async function fetchVisualizaUsuario({ idp, ids }) {
     body,
   });
   if (!response.ok) {
+    if (response.headers.get('content-type')?.includes('text/html')) {
+        throw new Error('Sessão expirada. Faça login no portal SIGSS novamente.');
+    }
     throw new Error('Erro ao buscar detalhes do usuário: ' + response.status);
   }
   return response.json();
 }
 
 /**
- * Busca dados do CADSUS pelo CPF, compara com a ficha local e retorna HTML com o resultado
+ * Buscar foto do usuário por código da pessoa (retorna base64)
+ * @endpoint GET /sigss/usuarioServico/visualizaFoto
  * @param {Object} options
- * @param {Object} options.ficha - Objeto da ficha local do usuário
- * @param {string} options.cpf - CPF do usuário
- * @returns {Promise<string>} HTML formatado com o resultado da comparação
+ * @param {string} options.codigoPessoa - Código da pessoa
+ * @returns {Promise<string>} Base64 da imagem
+ */
+export async function fetchFotoUsuario({ codigoPessoa }) {
+  const url = `http://saude.farroupilha.rs.gov.br/sigss/usuarioServico/visualizaFoto?codigoPessoa=${encodeURIComponent(
+    codigoPessoa
+  )}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Erro ao buscar foto: ' + response.status);
+  }
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Busca dados do CADSUS pelo CPF, compara com a ficha local e retorna HTML com o resultado
+ * @endpoint GET /sigss/usuarioServicoConsultaPDQ/consultarPaciente
+ * @param {Object} options
+ * @returns {Promise<string>}
  */
 export async function fetchAndCompareFichaCadsus({ ficha, cpf }) {
   try {
-    const urlCadsus = `http://saude.farroupilha.rs.gov.br/sigss/usuarioServicoConsultaPDQ/consultarPaciente?_search=false&rows=50&page=1&sidx=nome&sord=asc&pdq.cartaoNacionalSus=&pdq.cpf=${encodeURIComponent(
-      cpf
-    )}&pdq.rg=&pdq.nome=&pdq.dataNascimento=&pdq.sexo=&pdq.nomeMae=`;
+    const urlCadsus = `http://saude.farroupilha.rs.gov.br/sigss/usuarioServicoConsultaPDQ/consultarPaciente?_search=false&rows=50&page=1&sidx=nome&sord=asc&pdq.cartaoNacionalSus=&pdq.cpf=${encodeURIComponent(cpf)}&pdq.rg=&pdq.nome=&pdq.dataNascimento=&pdq.sexo=&pdq.nomeMae=`;
     const respCadsus = await fetch(urlCadsus, {
-      headers: {
-        accept: 'application/json, text/javascript, */*; q=0.01',
-        'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8,en-US;q=0.7,pt-PT;q=0.6',
-        'content-type': 'application/json; charset=iso-8859-1',
-        'x-requested-with': 'XMLHttpRequest',
-      },
-      referrer: 'http://saude.farroupilha.rs.gov.br/sigss/cadastroPaciente.jsp',
-      referrerPolicy: 'strict-origin-when-cross-origin',
       method: 'GET',
-      mode: 'cors',
       credentials: 'include',
     });
+    if (!respCadsus.ok) {
+        throw new Error(`Erro na API CADSUS: ${respCadsus.status}`);
+    }
     const cadsusData = await respCadsus.json();
     if (!cadsusData.rows || cadsusData.rows.length === 0) {
       return `<div style='color:#F90000;font-weight:bold;'>Usuário não encontrado no CADSUS pelo CPF.</div>`;
@@ -150,35 +177,23 @@ export async function fetchAndCompareFichaCadsus({ ficha, cpf }) {
     }
     return html;
   } catch (e) {
-    return `<div style='color:#F90000;font-weight:bold;'>Erro ao consultar ficha ou CADSUS do paciente.</div>`;
+    throw new Error(`Erro ao consultar CADSUS: ${e.message}`);
   }
 }
 
 /**
- * Interpreta a resposta da comparação CADSUS, detectando erros em HTML ou JSON e retornando objeto padronizado
- * @param {string} resposta - HTML ou JSON retornado por fetchAndCompareFichaCadsus
+ * Interpreta a resposta da comparação CADSUS
+ * @param {string} resposta - HTML ou JSON retornado
  * @returns {{ erro: boolean, mensagem: string, html: string }}
  */
 export function parseCadsusComparacaoResponse(resposta) {
-  if (
-    typeof resposta === 'string' &&
-    (resposta.includes('Erro ao consultar ficha') ||
-      resposta.includes('Usuário não encontrado no CADSUS'))
-  ) {
-    return {
-      erro: true,
-      mensagem: resposta,
-      html: `<div style='color:#c00;font-size:13px;'>${resposta}</div>`,
-    };
+  if (typeof resposta === 'string' && (resposta.includes('Erro ao consultar ficha') || resposta.includes('Usuário não encontrado no CADSUS'))) {
+    return { erro: true, mensagem: resposta, html: `<div style='color:#c00;font-size:13px;'>${resposta}</div>` };
   }
   try {
     const parsed = JSON.parse(resposta);
     if (parsed && parsed.mensagem && parsed.categoria === 'error') {
-      return {
-        erro: true,
-        mensagem: parsed.mensagem,
-        html: `<div style='color:#c00;font-size:13px;'>${parsed.mensagem}</div>`,
-      };
+      return { erro: true, mensagem: parsed.mensagem, html: `<div style='color:#c00;font-size:13px;'>${parsed.mensagem}</div>` };
     }
   } catch {}
   return { erro: false, mensagem: '', html: resposta };
@@ -186,91 +201,40 @@ export function parseCadsusComparacaoResponse(resposta) {
 
 /**
  * Busca detalhes de uma regulação pelo idp e ids
- * @param {object} param0
+ * @endpoint GET /sigss/regulacaoControleSolicitacao/visualiza
+ * @param {object} param0 
  * @returns {Promise<object>}
  */
 export async function fetchDetalhesRegulacao({ idp, ids }) {
   const url = `http://saude.farroupilha.rs.gov.br/sigss/regulacaoControleSolicitacao/visualiza?reguPK.idp=${idp}&reguPK.ids=${ids}`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'accept': 'application/json, text/javascript, */*; q=0.01',
-      'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8,en-US;q=0.7,pt-PT;q=0.6',
-      'x-requested-with': 'XMLHttpRequest',
-    },
-    credentials: 'include',
-    referrer: 'http://saude.farroupilha.rs.gov.br/sigss/regulacaoRegulador.jsp',
-    referrerPolicy: 'strict-origin-when-cross-origin',
-    mode: 'cors',
-  });
+  const response = await fetch(url, { method: 'GET', credentials: 'include' });
+  if (!response.ok) throw new Error('Erro ao buscar detalhes da regulação');
   return await response.json();
 }
 
 /**
- * Buscar compromissos do usuário por isenPK e período, com paginação e ordenação
+ * Buscar compromissos do usuário por isenPK e período
+ * @endpoint GET /sigss/resumoCompromisso/lista
  * @param {Object} options
- * @returns {Promise<Object>} Objeto com os compromissos encontrados
+ * @returns {Promise<Object>}
  */
-export async function fetchCompromissosUsuario({
-  isenPK,
-  dataInicial,
-  dataFinal,
-  page = 1,
-  rows = 15,
-  sidx = 'data',
-  sord = 'desc',
-}) {
-  const url = `http://saude.farroupilha.rs.gov.br/sigss/resumoCompromisso/lista?isenPK=${encodeURIComponent(
-    isenPK
-  )}&dataInicial=${encodeURIComponent(
-    dataInicial
-  )}&dataFinal=${encodeURIComponent(
-    dataFinal
-  )}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(
-    sidx
-  )}&sord=${encodeURIComponent(sord)}`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      accept: 'application/json, text/javascript, */*; q=0.01',
-      'content-type': 'application/json; charset=iso-8859-1',
-      'x-requested-with': 'XMLHttpRequest',
-    },
-    credentials: 'include',
-  });
-  if (!response.ok) {
-    throw new Error('Erro ao buscar compromissos: ' + response.status);
-  }
+export async function fetchCompromissosUsuario({ isenPK, dataInicial, dataFinal, page = 1, rows = 15, sidx = 'data', sord = 'desc' }) {
+  const url = `http://saude.farroupilha.rs.gov.br/sigss/resumoCompromisso/lista?isenPK=${encodeURIComponent(isenPK)}&dataInicial=${encodeURIComponent(dataInicial)}&dataFinal=${encodeURIComponent(dataFinal)}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(sidx)}&sord=${encodeURIComponent(sord)}`;
+  const response = await fetch(url, { method: 'GET', credentials: 'include' });
+  if (!response.ok) throw new Error('Erro ao buscar compromissos: ' + response.status);
   return response.json();
 }
 
 /**
- * Buscar lista de espera do SIGSS por isenPK (fullPK) com paginação e ordenação
+ * Buscar lista de espera do SIGSS por isenPK (fullPK)
+ * @endpoint GET /sigss/listaEspera/listar
  * @param {Object} options
- * @returns {Promise<Object>} Objeto com total, page, records, rows
+ * @returns {Promise<Object>}
  */
-export async function fetchListaEsperaPorIsenPK({
-  isenPK,
-  page = 1,
-  rows = 15,
-  sidx = 'lies.liesData',
-  sord = 'desc',
-}) {
-  const url = `http://saude.farroupilha.rs.gov.br/sigss/listaEspera/listar?filters%5B0%5D=isFiltrarData%3Afalse&filters%5B1%5D=dataInicial%3A&filters%5B2%5D=dataFinal%3A&filters%5B3%5D=limoPK%3A&filters%5B4%5D=liesTipo%3A&filters%5B5%5D=liesSituacao%3ATOD&filters%5B6%5D=isenPK%3A${isenPK}&filters%5B7%5D=apcnId%3A&filters%5B8%5D=prsaPK%3A&filters%5B9%5D=prciPK%3A&filters%5B10%5D=prsaSolicitantePK%3A&filters%5B11%5D=benePK%3A&filters%5B12%5D=deprPK%3A&filters%5B13%5D=clienteId%3A&filters%5B14%5D=prefeituraPK%3A&filters%5B15%5D=isFiltrarDatas%3Afalse&filters%5B16%5D=dataI%3A&filters%5B27%5D=dataF%3A&filters%5B28%5D=tufgId%3A&filters%5B29%5D=tusgId%3A&filters%5B30%5D=isenIsBloqueado%3A&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(
-    sidx
-  )}&sord=${encodeURIComponent(sord)}`;
-  const response = await fetch(url, {
-    headers: {
-      accept: 'application/json, text/javascript, */*; q=0.01',
-      'content-type': 'application/json; charset=iso-8859-1',
-      'x-requested-with': 'XMLHttpRequest',
-    },
-    method: 'GET',
-    credentials: 'include',
-  });
-  if (!response.ok) {
-    throw new Error('Erro ao buscar lista de espera');
-  }
+export async function fetchListaEsperaPorIsenPK({ isenPK, page = 1, rows = 15, sidx = 'lies.liesData', sord = 'desc' }) {
+  const url = `http://saude.farroupilha.rs.gov.br/sigss/listaEspera/listar?filters%5B0%5D=isFiltrarData%3Afalse&filters%5B1%5D=dataInicial%3A&filters%5B2%5D=dataFinal%3A&filters%5B3%5D=limoPK%3A&filters%5B4%5D=liesTipo%3A&filters%5B5%5D=liesSituacao%3ATOD&filters%5B6%5D=isenPK%3A${isenPK}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(sidx)}&sord=${encodeURIComponent(sord)}`;
+  const response = await fetch(url, { method: 'GET', credentials: 'include' });
+  if (!response.ok) throw new Error('Erro ao buscar lista de espera');
   const data = await response.json();
   return {
     total: data.total || 1,
@@ -279,15 +243,8 @@ export async function fetchListaEsperaPorIsenPK({
     rows: (data.rows || []).map((row) => {
       const c = row.cell;
       return {
-        id: row.id,
-        cell: c, // Passa a célula inteira para uso posterior
-        situacao: c[2],
-        tipo: c[3],
-        gravidade: c[4],
-        codigo: c[5],
-        nome: c[6],
-        idade: c[7],
-        dataEntrada: c[8],
+        id: row.id, cell: c, situacao: c[2], tipo: c[3], gravidade: c[4],
+        codigo: c[5], nome: c[6], idade: c[7], dataEntrada: c[8],
         especialidade: c[10]?.replace(/<br\s*\/?>(?!$)/gi, ' / '),
       };
     }),
@@ -303,105 +260,60 @@ export function getUsuarioFullPK(usuario) {
   if (!usuario) return null;
   if (usuario.fullPK) return usuario.fullPK;
   if (usuario.isenPK) return usuario.isenPK;
-  if (usuario.idp && usuario.ids) return `${usuario.idp}-${usuario.ids}`;
+  if (usuario.isenPK?.idp && usuario.isenPK?.ids) return `${usuario.isenPK.idp}-${usuario.isenPK.ids}`;
   return null;
 }
 
 /**
- * Buscar regulações do usuário (RegulaçãoRegulador) com filtros customizáveis
+ * Buscar regulações do usuário (RegulaçãoRegulador)
+ * @endpoint GET /sigss/regulacaoRegulador/lista
  * @param {Object} options
- * @returns {Promise<Object>} Objeto com as regulações encontradas
+ * @returns {Promise<Object>}
  */
-export async function fetchRegulacaoRegulador({
-  usuario,
-  filtros,
-  page = 1,
-  rows = 15,
-  sidx = 'regu.reguDataPrevista',
-  sord = 'desc',
-}) {
+export async function fetchRegulacaoRegulador({ usuario, filtros, page = 1, rows = 15, sidx = 'regu.reguDataPrevista', sord = 'desc' }) {
   const usuarioPK = getUsuarioFullPK(usuario);
   const defaultFilters = {
-    isFiltrarData: 'false',
-    dataInicial: '',
-    dataFinal: '',
-    modalidade: '',
-    solicitante: 'undefined',
-    usuarioServico: usuarioPK,
-    autorizado: 'false', pendente: 'false', devolvido: 'false', negado: 'false', emAnalise: 'false', cancelados: 'false',
+    isFiltrarData: 'false', dataInicial: '', dataFinal: '', modalidade: '', solicitante: 'undefined',
+    usuarioServico: usuarioPK, autorizado: 'false', pendente: 'false', devolvido: 'false', negado: 'false', emAnalise: 'false', cancelados: 'false',
     cboFiltro: '', procedimentoFiltro: '', reguGravidade: '', reguIsRetorno: '', codBarProtocolo: '', reguIsAgendadoFiltro: 'todos',
   };
   const mergedFilters = { ...defaultFilters, ...(filtros || {}) };
-  const filterParams = Object.entries(mergedFilters)
-      .map(([key, value], idx) => `filters%5B${idx}%5D=${encodeURIComponent(key)}%3A${encodeURIComponent(value)}`)
-      .join('&');
-
-  const url = `http://saude.farroupilha.rs.gov.br/sigss/regulacaoRegulador/lista?${filterParams}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(
-    sidx
-  )}&sord=${encodeURIComponent(sord)}`;
-  const response = await fetch(url, {
-    headers: {
-      accept: 'application/json, text/javascript, */*; q=0.01',
-      'x-requested-with': 'XMLHttpRequest',
-    },
-    credentials: 'include',
-  });
-  if (!response.ok) {
-    throw new Error('Erro ao buscar regulações: ' + response.status);
-  }
+  const filterParams = Object.entries(mergedFilters).map(([key, value], idx) => `filters%5B${idx}%5D=${encodeURIComponent(key)}%3A${encodeURIComponent(value)}`).join('&');
+  const url = `http://saude.farroupilha.rs.gov.br/sigss/regulacaoRegulador/lista?${filterParams}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(sidx)}&sord=${encodeURIComponent(sord)}`;
+  const response = await fetch(url, { method: 'GET', credentials: 'include' });
+  if (!response.ok) throw new Error('Erro ao buscar regulações: ' + response.status);
   return response.json();
 }
 
 /**
  * Buscar agendamentos de exame no SIGSS
+ * @endpoint GET /sigss/agendamentoExame/listar
  * @param {Object} options
- * @returns {Promise<Object>} Objeto com os agendamentos encontrados
+ * @returns {Promise<Object>}
  */
-export async function fetchAgendamentosExame({
-  searchField = 'isen.isenCod',
-  isExameTipo = 'ambos',
-  searchString = '',
-  searchStringBuscaUsuServico = '',
-  filters = {},
-  page = 1,
-  rows = 15,
-  sidx = 'itex.itexDataPrevista',
-  sord = 'desc',
-} = {}) {
+export async function fetchAgendamentosExame({ searchField = 'isen.isenCod', isExameTipo = 'ambos', searchString = '', searchStringBuscaUsuServico = '', filters = {}, page = 1, rows = 15, sidx = 'itex.itexDataPrevista', sord = 'desc' } = {}) {
   const defaultFilters = { isFiltrarData: 'false', dataInicial: '', dataFinal: '', isFiltrarDataNasc: 'false', dataNascInicial: '', dataNascFinal: '', isFiltrarIdade: 'false', idadeInicial: '', idadeFinal: '' };
   const allFilters = { ...defaultFilters, ...filters };
   const filtersParams = Object.entries(allFilters).map(([k, v], i) => `filters%5B${i}%5D=${encodeURIComponent(k + ':' + v)}`).join('&');
   const url = `http://saude.farroupilha.rs.gov.br/sigss/agendamentoExame/listar?searchField=${encodeURIComponent(searchField)}&isExameTipo=${encodeURIComponent(isExameTipo)}&searchString=${encodeURIComponent(searchString)}&searchStringBuscaUsuServico=${encodeURIComponent(searchStringBuscaUsuServico)}&${filtersParams}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(sidx)}&sord=${encodeURIComponent(sord)}`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      accept: 'application/json, text/javascript, */*; q=0.01',
-      'x-requested-with': 'XMLHttpRequest',
-    },
-    credentials: 'include',
-  });
-  if (!response.ok) {
-    throw new Error('Erro ao buscar agendamentos de exame: ' + response.status);
-  }
+  const response = await fetch(url, { method: 'GET', credentials: 'include' });
+  if (!response.ok) throw new Error('Erro ao buscar agendamentos de exame: ' + response.status);
   return response.json();
 }
 
 /**
- * Função para imprimir guia de exame agendado
- * @param {string} idp - idp do item do exame
- * @param {string} ids - ids do item do exame
+ * Imprimir guia de exame agendado
+ * @endpoint POST /sigss/itemExame/imprimirGuia
+ * @param {string} idp
+ * @param {string} ids
  */
 export async function fetchImprimirGuiaExame(idp, ids) {
     const params = new URLSearchParams();
     params.append("filters[0]", `examIdp:${idp}`);
     params.append("filters[1]", `examIds:${ids}`);
-    const response = await fetch(
-      "http://saude.farroupilha.rs.gov.br/sigss/itemExame/imprimirGuia",
-      {
+    const response = await fetch("http://saude.farroupilha.rs.gov.br/sigss/itemExame/imprimirGuia", {
         method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-        },
+        headers: { "content-type": "application/x-www-form-urlencoded; charset=UTF-8" },
         body: params.toString(),
         credentials: "include",
       }
@@ -415,9 +327,10 @@ export async function fetchImprimirGuiaExame(idp, ids) {
 }
 
 /**
- * Função para imprimir requisição de exame não laboratorial da lista de espera
- * @param {string} idp - idp da lista de espera
- * @param {string} ids - ids da lista de espera
+ * Imprimir requisição de exame não laboratorial da lista de espera
+ * @endpoint POST /sigss/requerimentoExame/imprimirRequerimentoExameNaoLabByLies
+ * @param {string} idp
+ * @param {string} ids
  */
 export async function fetchImprimirRequisicaoExameNaoLab(idp, ids) {
     const params = new URLSearchParams();
@@ -425,9 +338,7 @@ export async function fetchImprimirRequisicaoExameNaoLab(idp, ids) {
     params.append('lies.liesPK.ids', ids);
     const response = await fetch('http://saude.farroupilha.rs.gov.br/sigss/requerimentoExame/imprimirRequerimentoExameNaoLabByLies', {
       method: 'POST',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      },
+      headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: params.toString(),
       credentials: 'include',
     });
@@ -437,4 +348,22 @@ export async function fetchImprimirRequisicaoExameNaoLab(idp, ids) {
     } else {
       throw new Error("Não foi possível gerar a requisição.");
     }
+}
+
+/**
+ * Buscar requisições laboratoriais do SIGSS
+ * @endpoint GET /sigss/requerimentoExame/buscaGridReex
+ * @param {Object} options
+ * @returns {Promise<Object>}
+ */
+export async function fetchRequisicoesLaboratoriais({ idp, ids, page = 1, rows = 15, sidx = 'reex.reexPK.idp', sord = 'desc' }) {
+    const url = `http://saude.farroupilha.rs.gov.br/sigss/requerimentoExame/buscaGridReex?atcoPK.idp=${encodeURIComponent(idp)}&atcoPK.ids=${encodeURIComponent(ids)}&_search=false&nd=${Date.now()}&rows=${rows}&page=${page}&sidx=${encodeURIComponent(sidx)}&sord=${encodeURIComponent(sord)}`;
+    const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+    });
+    if (!response.ok) {
+        throw new Error("Erro ao buscar requisições laboratoriais: " + response.status);
+    }
+    return response.json();
 }

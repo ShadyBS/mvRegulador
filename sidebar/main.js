@@ -3,11 +3,15 @@
  */
 
 import * as handlers from './handlers.js';
+import { initErrorHandler } from './error-handler.js';
 
 /**
  * Função de inicialização que é executada quando o DOM está completamente carregado.
  */
 async function initialize() {
+  // Inicializa o gestor de erros global
+  initErrorHandler();
+
   // Carrega as configurações e o histórico em paralelo no início
   await Promise.all([
     handlers.loadSettings(),
@@ -47,7 +51,7 @@ async function initialize() {
       const panel = this.nextElementSibling;
       panel.classList.toggle('show');
     });
-    if (!btn.closest('#sessao-usuario')) { // Mantém secções de dados fechadas por defeito
+    if (!btn.closest('#sessao-usuario')) {
         btn.classList.remove('active');
         btn.nextElementSibling.classList.remove('show');
     } else {

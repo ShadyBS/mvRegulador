@@ -49,3 +49,34 @@ button:hover {
     text-align: center;
     color: #278B77;
 }
+
+/* --- Novos Estilos --- */
+.feedback-section {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+.feedback-section h2 {
+    text-align: center;
+    color: #333;
+}
+.feedback-section p {
+    text-align: center;
+    color: #555;
+    font-size: 14px;
+}
+.feedback-link {
+    display: block;
+    width: fit-content;
+    margin: 15px auto 0 auto;
+    padding: 10px 20px;
+    background-color: #0078d7;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+.feedback-link:hover {
+    background-color: #005fa3;
+}

@@ -1,0 +1,226 @@
+/* PADRONIZAÇÃO GERAL DA INTERFACE SIMPLIFICADA */
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 10px;
+        /* tamanho base da fonte */
+        margin: 0;
+        padding: 16px;
+        background: #f8fafc;
+        color: #222;
+}
+/* Garante que tabelas e campos sigam o padrão */
+table,
+th,
+td,
+input,
+button,
+select {
+    font-family: inherit;
+    font-size: inherit;
+}
+h1 {
+    font-size: 1.3em;
+    color: #0078d7;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+section {
+    margin-bottom: 12px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #e0e0e0;
+}
+.accordion {
+    background: #f1f1f1;
+    color: #222;
+    cursor: pointer;
+    padding: 10px 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px 8px 0 0;
+    margin: 0;
+}
+.accordion.active, .accordion:hover {
+    background: #e0e7ef;
+}
+.panel {
+    padding: 0 18px 14px 18px;
+    background: #fff;
+    display: none;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #e0e0e0;
+}
+.panel.show {
+    display: block;
+}
+input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cfd8dc;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 1em;
+    background: #f8fafc;
+}
+button, .btn-paginacao {
+    background: #0078d7;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 0;
+    font-weight: 500;
+}
+button:hover, .btn-paginacao:hover {
+    background: #005fa3;
+}
+button:disabled, .btn-paginacao:disabled {
+    background: #f0f0f0;
+    color: #aaa;
+    cursor: not-allowed;
+}
+.combobox-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 10px;
+}
+.combobox-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #cfd8dc;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 10;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.combobox-list li {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+.combobox-list li:hover, .combobox-list li.selected {
+    background: #e3f1fd;
+}
+.card-usuario {
+    background: #fff;
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 8px;
+}
+.card-usuario strong {
+    color: #0078d7;
+}
+.foto-usuario-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.foto-usuario {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 8px;
+    border: 2px solid #e3f1fd;
+    background: #f8fafc;
+}
+.compromissos-titulo {
+    font-weight: bold;
+    color: #0078d7;
+    margin-top: 18px;
+    margin-bottom: 6px;
+    font-size: 1.08em;
+    text-align: left;
+}
+.tabela-padrao {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 14px;
+    background: #fff;
+    border-radius: 8px;
+}
+.tabela-padrao th, .tabela-padrao td {
+    border-bottom: 1px solid #e0e0e0;
+    padding: 8px 10px;
+    text-align: left;
+}
+.tabela-padrao th {
+    background: #eaf3fa;
+    font-weight: 700;
+}
+.tabela-padrao tr:nth-child(even) {
+    background: #f7fbfd;
+}
+.tabela-padrao tr:hover {
+    background: #e6f0fa;
+}
+.header-tabela-lista-espera {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 2px;
+    min-height: 32px;
+}
+.paginacao-lista-espera {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-paginacao {
+    background: #f5f8fa;
+    border: 1px solid #d0e0ef;
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 18px;
+    color: #0078d7;
+    cursor: pointer;
+}
+.btn-paginacao:disabled {
+    background: #f0f0f0;
+    color: #aaa;
+    border-color: #e0e0e0;
+    cursor: not-allowed;
+}
+.icon-paginacao {
+    font-size: 18px;
+    vertical-align: middle;
+}
+.paginacao-info {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    margin: 0 4px;
+}
+.lds-dual-ring {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.lds-dual-ring:after {
+    content: " ";
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 2px;
+    border-radius: 50%;
+    border: 2px solid #0078d7;
+    border-color: #0078d7 transparent #0078d7 transparent;
+    animation: lds-dual-ring 1s linear infinite;
+}
+@keyframes lds-dual-ring {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Regulador MV - Farroupilha - by Cleitom Forni",
+  "version": "1.0",
+  "description": "Uma extensão para buscar informações no site da saúde de Farroupilha.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://saude.farroupilha.rs.gov.br/*"
+  ],
+  "side_panel": {
+    "default_path": "sidebar/popup.html",
+    "title": "Regulador MV",
+    "icon_path": "sidebar/icon128.png"
+  },
+  "icons": {
+    "16": "sidebar/icon16.png",
+    "48": "sidebar/icon48.png",
+    "128": "sidebar/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://saude.farroupilha.rs.gov.br/sigss/*"],
+      "js": ["sidebar/content-script.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "sidebar/background.js"
+  }
+}

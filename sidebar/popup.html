@@ -4,8 +4,7 @@
     <meta charset="UTF-8" />
     <title>Regulador MV</title>
     <link rel="stylesheet" href="popup.css" />
-    <script defer src="api.js"></script>
-    <script defer src="popup.js"></script>
+    <!-- Os scripts agora são carregados via módulo no final do body -->
   </head>
   <body>
     <h1>Regulador MV</h1>
@@ -37,15 +36,15 @@
     <section class="sessao-agendamentos-exame">
       <button class="accordion" type="button">Agendamentos de Exame</button>
       <div class="panel" id="agendamentosExamePanel">
-        <form id="formAgendamentoExame" style="margin-bottom:10px;">
+        <form id="formAgendamentoExame" style="margin-bottom: 10px">
           <input
             type="text"
             id="agendamentoExameBusca"
             placeholder="Nome do paciente, CPF, etc..."
             autocomplete="off"
-            style="margin-bottom:6px;"
+            style="margin-bottom: 6px"
           />
-          <select id="agendamentoExameTipo" style="margin-bottom:6px;">
+          <select id="agendamentoExameTipo" style="margin-bottom: 6px">
             <option value="ambos">Todos os tipos</option>
             <option value="isLaboratorial">Laboratorial</option>
             <option value="isNaoLaboratorial">Não Laboratorial</option>
@@ -56,5 +55,12 @@
       </div>
     </section>
     <pre id="resultado" style="display: none"></pre>
+
+    <!--
+      Os scripts antigos (api.js, popup.js) foram removidos.
+      Agora, apenas um script é carregado como 'módulo', e ele
+      será responsável por importar os outros.
+    -->
+    <script type="module" src="main.js"></script>
   </body>
 </html>

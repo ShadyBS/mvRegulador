@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <title>Regulador MV</title>
     <link rel="stylesheet" href="popup.css" />
-    <!-- Os scripts agora são carregados via módulo no final do body -->
   </head>
   <body>
     <h1>Regulador MV</h1>
@@ -12,55 +11,48 @@
       <input
         type="text"
         id="inputBusca"
-        placeholder="Digite o nome, CPF ou parte do nome do usuário/serviço..."
+        placeholder="Digite o nome, CPF ou parte do nome..."
         autocomplete="off"
       />
       <ul id="listaSugestoes" class="combobox-list" style="display: none"></ul>
     </div>
+    <div id="toast-container"></div>
+    <!-- Container para as notificações -->
+
     <section class="sessao-usuario">
       <button class="accordion" type="button">Dados do Usuário</button>
       <div class="panel" id="cardUsuario"></div>
     </section>
+
+    <!-- A secção de comparação será criada dinamicamente pelo JS -->
+
     <section class="sessao-compromissos">
       <button class="accordion" type="button">Compromissos</button>
       <div class="panel" id="compromissosTabela"></div>
     </section>
+
     <section class="sessao-lista-espera">
       <button class="accordion" type="button">Lista de Espera SIGSS</button>
       <div class="panel" id="listaEsperaUsuario"></div>
     </section>
+
     <section class="sessao-regulacao" id="sessao-regulacao">
       <button class="accordion" type="button">Regulações</button>
-      <div class="panel" id="regulacaoTabela"></div>
-    </section>
-    <section class="sessao-agendamentos-exame">
-      <button class="accordion" type="button">Agendamentos de Exame</button>
-      <div class="panel" id="agendamentosExamePanel">
-        <form id="formAgendamentoExame" style="margin-bottom: 10px">
-          <input
-            type="text"
-            id="agendamentoExameBusca"
-            placeholder="Nome do paciente, CPF, etc..."
-            autocomplete="off"
-            style="margin-bottom: 6px"
-          />
-          <select id="agendamentoExameTipo" style="margin-bottom: 6px">
-            <option value="ambos">Todos os tipos</option>
-            <option value="isLaboratorial">Laboratorial</option>
-            <option value="isNaoLaboratorial">Não Laboratorial</option>
-          </select>
-          <button type="submit">Buscar</button>
-        </form>
-        <div id="agendamentosExameTabela"></div>
+      <div class="panel" id="regulacaoPanel">
+        <!-- O formulário de filtro será adicionado aqui pelo JS -->
+        <div id="regulacaoContainer"></div>
+        <!-- A tabela será renderizada aqui -->
       </div>
     </section>
+
+    <section class="sessao-agendamentos-exame">
+      <button class="accordion" type="button">Agendamentos de Exame</button>
+      <!-- O painel e o formulário serão simplificados -->
+      <div class="panel" id="agendamentosExamePanel"></div>
+    </section>
+
     <pre id="resultado" style="display: none"></pre>
 
-    <!--
-      Os scripts antigos (api.js, popup.js) foram removidos.
-      Agora, apenas um script é carregado como 'módulo', e ele
-      será responsável por importar os outros.
-    -->
     <script type="module" src="main.js"></script>
   </body>
 </html>

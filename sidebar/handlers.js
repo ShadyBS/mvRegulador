@@ -22,8 +22,7 @@ export async function handleSearchInput(event) {
   const termo = event.target.value.trim();
   if (event.key === 'Enter') {
     if (termo.length < 3) {
-      resultadoEl.textContent = 'Digite pelo menos 3 caracteres para buscar.';
-      resultadoEl.style.display = 'block';
+      ui.showToast('Digite pelo menos 3 caracteres.', 'info');
       return;
     }
     resultadoEl.textContent = '🔎 Buscando...';
@@ -36,7 +35,8 @@ export async function handleSearchInput(event) {
       resultadoEl.style.display = 'none';
     } catch (error) {
       console.error('Erro ao buscar sugestões:', error);
-      resultadoEl.textContent = `Erro: ${error.message}`;
+      ui.showToast(`Erro: ${error.message}`, 'error');
+      resultadoEl.style.display = 'none';
     } finally {
       ui.setSessionSpinner('sessao-usuario', false);
     }
@@ -93,13 +93,12 @@ export async function handleSelectSuggestion(index) {
   const idp = sugestao[0];
   const ids = sugestao[1];
 
-  // Limpa a UI e mostra spinners
+  // Limpa a UI
   cardUsuario.innerHTML = '';
   document.getElementById('compromissosTabela').innerHTML = '';
   document.getElementById('listaEsperaUsuario').innerHTML = '';
-  document.getElementById('regulacaoTabela').innerHTML = '';
-  document.getElementById('agendamentosExameTabela').innerHTML = '';
-
+  document.getElementById('regulacaoPanel').innerHTML = '';
+  document.getElementById('agendamentosExamePanel').innerHTML = '';
 
   ui.setSessionSpinner('sessao-usuario', true);
   try {
@@ -116,23 +115,28 @@ export async function handleSelectSuggestion(index) {
       }
       ui.renderUserCard(state.currentUser, fotoHTML);
       
-      await Promise.all([
-        renderComparacaoCadsus(state.currentUser),
-        renderCompromissos(state.currentUser, 1),
-        renderListaEspera(state.currentUser, 1),
-        renderRegulacoes(state.currentUser, 1),
-        renderAgendamentosExame(state.currentUser, 1),
-      ]);
-
+      renderAllSections(state.currentUser);
     } else {
-      cardUsuario.innerHTML = '<div style="color:#c00">Detalhes não encontrados.</div>';
+      ui.showToast('Detalhes do utilizador não encontrados.', 'error');
     }
   } catch (error) {
     console.error('Erro ao selecionar sugestão:', error);
-    cardUsuario.innerHTML = `<div style="color:#c00">Erro ao buscar detalhes: ${error.message}</div>`;
+    ui.showToast(`Erro ao buscar detalhes: ${error.message}`, 'error');
   } finally {
     ui.setSessionSpinner('sessao-usuario', false);
   }
+}
+
+/**
+ * Orquestra a renderização de todas as secções de dados para o utilizador.
+ * @param {object} user - O objeto do utilizador.
+ */
+function renderAllSections(user) {
+    renderComparacaoCadsus(user);
+    renderCompromissos(user);
+    renderListaEspera(user);
+    renderRegulacoes(user);
+    // A secção de Agendamentos de Exame será implementada depois
 }
 
 /**
@@ -140,14 +144,14 @@ export async function handleSelectSuggestion(index) {
  * @param {object} user - O objeto do utilizador.
  */
 async function renderComparacaoCadsus(user) {
-    const cpf = user?.entidadeFisica?.entfCPF;
     let comparacaoSessao = document.getElementById("sessao-comparacao-cadsus");
     if (!comparacaoSessao) {
         comparacaoSessao = document.createElement("section");
         comparacaoSessao.id = "sessao-comparacao-cadsus";
+        comparacaoSessao.className = "sessao-comparacao-cadsus";
         comparacaoSessao.innerHTML = `
             <button class="accordion active" type="button">Comparação com CADSUS</button>
-            <div class="panel show" id="comparacaoCadsus"></div>
+            <div class="panel show" id="comparacaoDiv"></div>
         `;
         document.querySelector('.sessao-usuario').after(comparacaoSessao);
         comparacaoSessao.querySelector('.accordion').addEventListener('click', function() {
@@ -155,146 +159,135 @@ async function renderComparacaoCadsus(user) {
             this.nextElementSibling.classList.toggle('show');
         });
     }
-
-    const comparacaoDiv = document.getElementById("comparacaoCadsus");
+    const comparacaoDiv = document.getElementById("comparacaoDiv");
+    const cpf = user?.entidadeFisica?.entfCPF;
     if (cpf) {
-        comparacaoDiv.innerHTML = '<div style="color:#888;font-size:13px;">🔎 Comparando ficha com CADSUS...</div>';
+        comparacaoDiv.innerHTML = '<div style="padding:10px;">🔎 Comparando com CADSUS...</div>';
         try {
             const htmlComparacao = await api.fetchAndCompareFichaCadsus({ ficha: user, cpf });
             const { html } = api.parseCadsusComparacaoResponse(htmlComparacao);
             comparacaoDiv.innerHTML = html;
         } catch (e) {
-            comparacaoDiv.innerHTML = `<div style='color:#c00;font-size:13px;'>Erro ao comparar: ${e.message}</div>`;
+            comparacaoDiv.innerHTML = `<div style='color:#c00; padding:10px;'>Erro ao comparar: ${e.message}</div>`;
         }
     } else {
-        comparacaoDiv.innerHTML = '<div style="color:#888;font-size:13px;">CPF não disponível para comparação.</div>';
+        comparacaoDiv.innerHTML = '<div style="padding:10px;">CPF não disponível para comparação.</div>';
     }
 }
 
 
 /**
- * Busca e renderiza os compromissos com paginação.
+ * Configura e renderiza a tabela de compromissos.
  * @param {object} user - O objeto do utilizador.
- * @param {number} page - A página a ser buscada.
  */
-async function renderCompromissos(user, page = 1) {
-  const container = document.getElementById('compromissosTabela');
-  ui.setSessionSpinner('sessao-compromissos', true);
-  try {
+function renderCompromissos(user) {
     const hoje = new Date();
     const dataFinal = hoje.toLocaleDateString('pt-BR');
     const dataInicial = new Date(hoje.getFullYear() - 5, hoje.getMonth(), hoje.getDate()).toLocaleDateString('pt-BR');
-    const data = await api.fetchCompromissosUsuario({
-      isenPK: api.getUsuarioFullPK(user),
-      dataInicial,
-      dataFinal,
-      page,
+
+    ui.createSectionWithPaginatedTable({
+        containerId: 'compromissosTabela',
+        title: 'Histórico de Compromissos',
+        apiCall: api.fetchCompromissosUsuario,
+        apiParams: { isenPK: api.getUsuarioFullPK(user), dataInicial, dataFinal },
+        columns: [
+            { key: 'data', label: 'Data' },
+            { key: 'hora', label: 'Hora' },
+            { key: 'unidade', label: 'Unidade' },
+            { key: 'profissional', label: 'Profissional' },
+            { key: 'procedimento', label: 'Procedimento' },
+            { key: 'faltou', label: 'Faltou?' },
+        ],
+        rowFormatter: (item) => {
+            const c = item.cell;
+            return `<tr>
+                <td>${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td>
+                <td>${c[5]}</td><td>${c[6]}</td><td>${c[10].replace(/<[^>]+>/g, '')}</td>
+            </tr>`;
+        }
     });
-
-    const totalPaginas = data.total || 1;
-    let paginacaoHTML = '';
-    if (totalPaginas > 1) {
-      paginacaoHTML = `<div class='paginacao-lista-espera paginacao-topo'>
-        <button class='btn-paginacao' ${page === 1 ? 'disabled' : ''} data-page='${page - 1}'>⏮️</button>
-        <span class='paginacao-info'>Página <b>${page}</b> de <b>${totalPaginas}</b></span>
-        <button class='btn-paginacao' ${page === totalPaginas ? 'disabled' : ''} data-page='${page + 1}'>⏭️</button>
-      </div>`;
-    }
-
-    let tabelaHTML = `<table class='tabela-padrao'><thead><tr><th>Data</th><th>Hora</th><th>Unidade</th><th>Profissional</th><th>Procedimento</th><th>Faltou?</th></tr></thead><tbody>`;
-    if (data.rows && data.rows.length > 0) {
-      data.rows.forEach(row => {
-        const c = row.cell;
-        tabelaHTML += `<tr><td>${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td><td>${c[5]}</td><td>${c[6]}</td><td>${c[10].replace(/<[^>]+>/g, '')}</td></tr>`;
-      });
-    } else {
-      tabelaHTML += `<tr><td colspan="6" style="text-align:center;">Nenhum compromisso encontrado.</td></tr>`;
-    }
-    tabelaHTML += '</tbody></table>';
-    container.innerHTML = `<div class='compromissos-titulo'>Histórico de Compromissos</div>${paginacaoHTML}${tabelaHTML}`;
-
-    container.querySelectorAll('.btn-paginacao').forEach(btn => {
-      btn.addEventListener('click', () => renderCompromissos(user, parseInt(btn.dataset.page)));
-    });
-  } catch (e) {
-    container.innerHTML = `<div style='color:#c00;font-size:13px;'>Erro ao buscar compromissos: ${e.message}</div>`;
-  } finally {
-    ui.setSessionSpinner('sessao-compromissos', false);
-  }
 }
 
 /**
- * Busca e renderiza a lista de espera com paginação.
+ * Configura e renderiza a tabela da lista de espera.
  * @param {object} user - O objeto do utilizador.
- * @param {number} page - A página a ser buscada.
  */
-async function renderListaEspera(user, page = 1) {
-  const container = document.getElementById('listaEsperaUsuario');
-  ui.setSessionSpinner('sessao-lista-espera', true);
-  try {
-    const data = await api.fetchListaEsperaPorIsenPK({ isenPK: api.getUsuarioFullPK(user), page });
-
-    const totalPaginas = data.total || 1;
-    let paginacaoHTML = '';
-    if (totalPaginas > 1) {
-      paginacaoHTML = `<div class='paginacao-lista-espera paginacao-topo'>
-        <button class='btn-paginacao' ${page === 1 ? 'disabled' : ''} data-page='${page - 1}'>⏮️</button>
-        <span class='paginacao-info'>Página <b>${page}</b> de <b>${totalPaginas}</b></span>
-        <button class='btn-paginacao' ${page === totalPaginas ? 'disabled' : ''} data-page='${page + 1}'>⏭️</button>
-      </div>`;
-    }
-
-    let tabelaHTML = `<table class="tabela-padrao"><thead><tr><th>Situação</th><th>Tipo</th><th>Gravidade</th><th>Data Entrada</th><th>Procedimento</th><th>Origem</th><th>Ações</th></tr></thead><tbody>`;
-    if (data.rows && data.rows.length > 0) {
-        data.rows.forEach(item => {
+function renderListaEspera(user) {
+    ui.createSectionWithPaginatedTable({
+        containerId: 'listaEsperaUsuario',
+        title: 'Lista de Espera SIGSS',
+        apiCall: api.fetchListaEsperaPorIsenPK,
+        apiParams: { isenPK: api.getUsuarioFullPK(user) },
+        columns: [
+            { label: 'Situação' }, { label: 'Tipo' }, { label: 'Gravidade' }, 
+            { label: 'Data Entrada' }, { label: 'Procedimento' }, { label: 'Origem' }, { label: 'Ações' }
+        ],
+        rowFormatter: (item) => {
             const { procedimento, origem } = extrairProcedimentoOrigem(item.especialidade);
             let btnImprimir = '';
-            if (item.tipo === 'EXA' && item.id && Array.isArray(item.cell)) {
-                const idp = item.cell[0];
-                const ids = item.cell[1];
-                btnImprimir = `<button class='btn-imprimir-exame' title='Imprimir requisição' data-idp='${idp}' data-ids='${ids}'>🖨️</button>`;
+            if (item.tipo === 'EXA') {
+                btnImprimir = `<button class='btn-imprimir-exame' title='Imprimir requisição' data-action="print-req" data-idp='${item.cell[0]}' data-ids='${item.cell[1]}'>🖨️</button>`;
             }
-            tabelaHTML += `<tr><td>${item.situacao}</td><td>${item.tipo}</td><td>${item.gravidade}</td><td>${item.dataEntrada}</td><td>${procedimento}</td><td>${origem}</td><td>${btnImprimir}</td></tr>`;
-        });
-    } else {
-        tabelaHTML += `<tr><td colspan="7" style="text-align:center;">Nenhuma entrada na lista de espera.</td></tr>`;
-    }
-    tabelaHTML += '</tbody></table>';
-    container.innerHTML = `<div class="compromissos-titulo">Lista de Espera SIGSS</div>${paginacaoHTML}${tabelaHTML}`;
-
-    container.querySelectorAll('.btn-paginacao').forEach(btn => {
-      btn.addEventListener('click', () => renderListaEspera(user, parseInt(btn.dataset.page)));
+            return `<tr>
+                <td>${item.situacao}</td><td>${item.tipo}</td><td>${item.gravidade}</td>
+                <td>${item.dataEntrada}</td><td>${procedimento}</td><td>${origem}</td>
+                <td>${btnImprimir}</td>
+            </tr>`;
+        },
+        onRowButtonClick: async (event, data) => {
+            if (data.action === 'print-req') {
+                try {
+                    await api.fetchImprimirRequisicaoExameNaoLab(data.idp, data.ids);
+                } catch (e) { ui.showToast(e.message, 'error'); }
+            }
+        }
     });
-    container.querySelectorAll('.btn-imprimir-exame').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try {
-          await api.fetchImprimirRequisicaoExameNaoLab(btn.dataset.idp, btn.dataset.ids);
-        } catch (e) { alert(e.message); }
-      });
-    });
-  } catch (e) {
-    container.innerHTML = `<div style='color:#c00;font-size:13px;'>Erro ao buscar lista de espera: ${e.message}</div>`;
-  } finally {
-    ui.setSessionSpinner('sessao-lista-espera', false);
-  }
 }
 
 /**
- * Busca e renderiza as regulações com paginação.
+ * Configura e renderiza a tabela de regulações com filtros.
  * @param {object} user - O objeto do utilizador.
- * @param {number} page - A página a ser buscada.
  */
-async function renderRegulacoes(user, page = 1) {
-    // Implementação similar às outras funções de renderização de tabela
-}
-
-/**
- * Busca e renderiza os agendamentos de exame com paginação.
- * @param {object} user - O objeto do utilizador.
- * @param {number} page - A página a ser buscada.
- */
-async function renderAgendamentosExame(user, page = 1) {
-    // Implementação similar às outras funções de renderização de tabela
+function renderRegulacoes(user) {
+     ui.createSectionWithPaginatedTable({
+        containerId: 'regulacaoPanel',
+        title: 'Regulações',
+        apiCall: api.fetchRegulacaoRegulador,
+        apiParams: { usuario: user },
+        filters: [
+            {
+                type: 'select',
+                name: 'status',
+                options: [
+                    { value: '', label: 'Todos os Status' },
+                    { value: 'AUTORIZADO', label: 'Autorizado' },
+                    { value: 'PENDENTE', label: 'Pendente' },
+                    { value: 'DEVOLVIDO', label: 'Devolvido' },
+                    { value: 'NEGADO', label: 'Negado' },
+                    { value: 'CANCELADA', label: 'Cancelado' },
+                ]
+            }
+        ],
+        columns: [
+            { label: 'ID' }, { label: 'Tipo' }, { label: 'Prioridade' }, { label: 'Data' }, 
+            { label: 'Status' }, { label: 'Procedimento/CID' }, { label: 'Ações' }
+        ],
+        rowFormatter: (item) => {
+            const c = item.cell;
+            const status = (c[5] || "").replace(/<[^>]+>/g, "");
+            const btnDetalhes = `<button title='Ver detalhes' data-action="details" data-idp='${c[0]}' data-ids='${c[1]}'>🔎</button>`;
+            return `<tr>
+                <td>${c[0]}</td><td>${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td>
+                <td>${status}</td><td>${c[6]}</td><td>${btnDetalhes}</td>
+            </tr>`;
+        },
+        onRowButtonClick: (event, data) => {
+            if (data.action === 'details') {
+                // Lógica do modal de detalhes
+                ui.showToast(`Detalhes para Regulação ID: ${data.idp}`, 'info');
+            }
+        }
+    });
 }
 
 
@@ -311,3 +304,4 @@ function extrairProcedimentoOrigem(especialidade) {
     origem: partes[1] ? partes[1].replace(/^\s*Origem:\s*/i, '').trim() : '',
   };
 }
+

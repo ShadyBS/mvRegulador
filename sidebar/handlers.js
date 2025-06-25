@@ -6,11 +6,11 @@
 
 import * as api from './api.js';
 import * as ui from './ui.js';
-import { state, setCurrentUser, setSuggestions, setSelectedSuggestionIndex } from './state.js';
+import { state, setCurrentUser, setSuggestions, setSelectedSuggestionIndex, setSearchHistory, setSettings } from './state.js';
 
+// Elementos do DOM
 const inputBusca = document.getElementById('inputBusca');
 const listaSugestoes = document.getElementById('listaSugestoes');
-const cardUsuario = document.getElementById('cardUsuario');
 const resultadoEl = document.getElementById('resultado');
 
 /**
@@ -93,29 +93,26 @@ export async function handleSelectSuggestion(index) {
   const idp = sugestao[0];
   const ids = sugestao[1];
 
-  // Limpa a UI
-  cardUsuario.innerHTML = '';
-  document.getElementById('compromissosTabela').innerHTML = '';
-  document.getElementById('listaEsperaUsuario').innerHTML = '';
-  document.getElementById('regulacaoPanel').innerHTML = '';
-  document.getElementById('agendamentosExamePanel').innerHTML = '';
+  clearAllSections();
 
   ui.setSessionSpinner('sessao-usuario', true);
   try {
     const data = await api.fetchVisualizaUsuario({ idp, ids });
     
     if (data && data.usuarioServico) {
-      setCurrentUser(data.usuarioServico);
+      const user = data.usuarioServico;
+      setCurrentUser(user);
+      manageSearchHistory(user);
 
-      const fotoPath = data.usuarioServico.entidadeFisica?.foto;
+      const fotoPath = user.entidadeFisica?.foto;
       let fotoHTML = null;
       if (fotoPath) {
         const fotoSrc = fotoPath.startsWith('/') ? `http://saude.farroupilha.rs.gov.br${fotoPath}` : `http://saude.farroupilha.rs.gov.br/sigss/${fotoPath}`;
         fotoHTML = `<div class="foto-usuario-container"><img src="${fotoSrc}" alt="Foto do usuário" class="foto-usuario" onerror="this.style.display='none'" /></div>`;
       }
-      ui.renderUserCard(state.currentUser, fotoHTML);
+      ui.renderUserCard(user, fotoHTML);
       
-      renderAllSections(state.currentUser);
+      renderAllSections(user);
     } else {
       ui.showToast('Detalhes do utilizador não encontrados.', 'error');
     }
@@ -128,15 +125,155 @@ export async function handleSelectSuggestion(index) {
 }
 
 /**
+ * Limpa o conteúdo de todas as secções dinâmicas.
+ */
+function clearAllSections() {
+    document.getElementById('cardUsuario').innerHTML = '';
+    document.getElementById('dashboard-container').innerHTML = '';
+    document.getElementById('compromissosTabela').innerHTML = '';
+    document.getElementById('listaEsperaUsuario').innerHTML = '';
+    document.getElementById('regulacaoPanel').innerHTML = '';
+    document.getElementById('agendamentosExamePanel').innerHTML = '';
+    const comparacaoSessao = document.getElementById("sessao-comparacao-cadsus");
+    if (comparacaoSessao) comparacaoSessao.remove();
+}
+
+/**
+ * Carrega as configurações do utilizador a partir do storage.
+ */
+export async function loadSettings() {
+    chrome.storage.sync.get({ settings: { itemsPerPage: 15 } }, (data) => {
+        setSettings(data.settings);
+    });
+}
+
+/**
+ * Carrega e renderiza o histórico de pesquisas.
+ */
+export async function loadAndRenderHistory() {
+    chrome.storage.local.get({ searchHistory: [] }, (data) => {
+        setSearchHistory(data.searchHistory);
+        renderHistory();
+    });
+}
+
+/**
+ * Adiciona um utilizador ao histórico de pesquisa e guarda-o.
+ * @param {object} user - O objeto do utilizador a adicionar.
+ */
+function manageSearchHistory(user) {
+    let history = state.searchHistory;
+    const userIdentifier = api.getUsuarioFullPK(user);
+    
+    history = history.filter(item => item.id !== userIdentifier);
+
+    history.unshift({
+        id: userIdentifier,
+        name: user.entidadeFisica.entidade.entiNome,
+        idp: user.isenPK.idp,
+        ids: user.isenPK.ids,
+    });
+
+    if (history.length > 10) {
+        history.pop();
+    }
+
+    setSearchHistory(history);
+    chrome.storage.local.set({ searchHistory: history });
+    renderHistory();
+}
+
+/**
+ * Renderiza a lista do histórico na UI.
+ */
+function renderHistory() {
+    const container = document.getElementById('history-container');
+    container.innerHTML = '<h3>Histórico Recente:</h3>';
+    const list = document.createElement('div');
+    list.className = 'history-list';
+
+    if (state.searchHistory.length === 0) {
+        list.innerHTML = '<span style="font-size:12px; color:#555;">Nenhum histórico.</span>';
+    } else {
+        state.searchHistory.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'history-item';
+            btn.textContent = item.name.split(' ')[0];
+            btn.title = item.name;
+            btn.dataset.idp = item.idp;
+            btn.dataset.ids = item.ids;
+            btn.addEventListener('click', handleHistoryClick);
+            list.appendChild(btn);
+        });
+    }
+    container.appendChild(list);
+}
+
+/**
+ * Gestor para o clique num item do histórico.
+ * @param {MouseEvent} event - O evento do clique.
+ */
+async function handleHistoryClick(event) {
+    const { idp, ids } = event.target.dataset;
+    clearAllSections();
+    const fakeSuggestion = [idp, ids, '', '', '', event.target.title, '', ''];
+    setSuggestions([fakeSuggestion]);
+    handleSelectSuggestion(0);
+}
+
+/**
+ * Renderiza o dashboard com estatísticas do utilizador.
+ * @param {object} user - O objeto do utilizador.
+ */
+async function renderDashboard(user) {
+    const container = document.getElementById('dashboard-container');
+    ui.renderSkeleton(container, 1, 3);
+
+    try {
+        const userId = api.getUsuarioFullPK(user);
+        const [listaEsperaData, regulacoesData] = await Promise.all([
+            api.fetchListaEsperaPorIsenPK({ isenPK: userId, rows: 1 }),
+            api.fetchRegulacaoRegulador({ usuario: user, rows: 1 }),
+        ]);
+
+        const idadeCalculada = calcularIdade(user.entidadeFisica?.entfDtNasc);
+
+        const stats = {
+            listaEspera: listaEsperaData.records || 0,
+            regulacoes: regulacoesData.records || 0,
+            idade: idadeCalculada,
+        };
+
+        container.innerHTML = `
+            <div class="dashboard-card ${stats.listaEspera > 0 ? 'alert' : ''}">
+                <div class="value">${stats.listaEspera}</div>
+                <div class="label">Lista de Espera</div>
+            </div>
+            <div class="dashboard-card ${stats.regulacoes > 0 ? 'alert' : ''}">
+                <div class="value">${stats.regulacoes}</div>
+                <div class="label">Regulações Ativas</div>
+            </div>
+            <div class="dashboard-card">
+                <div class="value">${stats.idade}</div>
+                <div class="label">Idade</div>
+            </div>
+        `;
+    } catch (e) {
+        container.innerHTML = `<div style="color: #c00; font-size: 12px; grid-column: 1 / -1;">Erro ao carregar dashboard.</div>`;
+    }
+}
+
+/**
  * Orquestra a renderização de todas as secções de dados para o utilizador.
  * @param {object} user - O objeto do utilizador.
  */
 function renderAllSections(user) {
+    renderDashboard(user);
     renderComparacaoCadsus(user);
     renderCompromissos(user);
     renderListaEspera(user);
     renderRegulacoes(user);
-    // A secção de Agendamentos de Exame será implementada depois
+    renderAgendamentosExame(user);
 }
 
 /**
@@ -175,7 +312,6 @@ async function renderComparacaoCadsus(user) {
     }
 }
 
-
 /**
  * Configura e renderiza a tabela de compromissos.
  * @param {object} user - O objeto do utilizador.
@@ -189,14 +325,10 @@ function renderCompromissos(user) {
         containerId: 'compromissosTabela',
         title: 'Histórico de Compromissos',
         apiCall: api.fetchCompromissosUsuario,
-        apiParams: { isenPK: api.getUsuarioFullPK(user), dataInicial, dataFinal },
+        apiParams: { isenPK: api.getUsuarioFullPK(user), dataInicial, dataFinal, rows: state.settings.itemsPerPage },
         columns: [
-            { key: 'data', label: 'Data' },
-            { key: 'hora', label: 'Hora' },
-            { key: 'unidade', label: 'Unidade' },
-            { key: 'profissional', label: 'Profissional' },
-            { key: 'procedimento', label: 'Procedimento' },
-            { key: 'faltou', label: 'Faltou?' },
+            { key: 'data', label: 'Data' }, { key: 'hora', label: 'Hora' }, { key: 'unidade', label: 'Unidade' },
+            { key: 'profissional', label: 'Profissional' }, { key: 'procedimento', label: 'Procedimento' }, { key: 'faltou', label: 'Faltou?' }
         ],
         rowFormatter: (item) => {
             const c = item.cell;
@@ -217,10 +349,10 @@ function renderListaEspera(user) {
         containerId: 'listaEsperaUsuario',
         title: 'Lista de Espera SIGSS',
         apiCall: api.fetchListaEsperaPorIsenPK,
-        apiParams: { isenPK: api.getUsuarioFullPK(user) },
+        apiParams: { isenPK: api.getUsuarioFullPK(user), rows: state.settings.itemsPerPage },
         columns: [
-            { label: 'Situação' }, { label: 'Tipo' }, { label: 'Gravidade' }, 
-            { label: 'Data Entrada' }, { label: 'Procedimento' }, { label: 'Origem' }, { label: 'Ações' }
+            { label: 'Situação' }, { label: 'Tipo' }, { label: 'Gravidade' }, { label: 'Data Entrada' },
+            { label: 'Procedimento' }, { label: 'Origem' }, { label: 'Ações' }
         ],
         rowFormatter: (item) => {
             const { procedimento, origem } = extrairProcedimentoOrigem(item.especialidade);
@@ -253,21 +385,15 @@ function renderRegulacoes(user) {
         containerId: 'regulacaoPanel',
         title: 'Regulações',
         apiCall: api.fetchRegulacaoRegulador,
-        apiParams: { usuario: user },
-        filters: [
-            {
-                type: 'select',
-                name: 'status',
-                options: [
-                    { value: '', label: 'Todos os Status' },
-                    { value: 'AUTORIZADO', label: 'Autorizado' },
-                    { value: 'PENDENTE', label: 'Pendente' },
-                    { value: 'DEVOLVIDO', label: 'Devolvido' },
-                    { value: 'NEGADO', label: 'Negado' },
-                    { value: 'CANCELADA', label: 'Cancelado' },
-                ]
-            }
-        ],
+        apiParams: { usuario: user, rows: state.settings.itemsPerPage },
+        filters: [ {
+            type: 'select', name: 'status',
+            options: [
+                { value: '', label: 'Todos os Status' }, { value: 'AUTORIZADO', label: 'Autorizado' },
+                { value: 'PENDENTE', label: 'Pendente' }, { value: 'DEVOLVIDO', label: 'Devolvido' },
+                { value: 'NEGADO', label: 'Negado' }, { value: 'CANCELADA', label: 'Cancelado' },
+            ]
+        } ],
         columns: [
             { label: 'ID' }, { label: 'Tipo' }, { label: 'Prioridade' }, { label: 'Data' }, 
             { label: 'Status' }, { label: 'Procedimento/CID' }, { label: 'Ações' }
@@ -281,15 +407,54 @@ function renderRegulacoes(user) {
                 <td>${status}</td><td>${c[6]}</td><td>${btnDetalhes}</td>
             </tr>`;
         },
-        onRowButtonClick: (event, data) => {
+        onRowButtonClick: async (event, data) => {
             if (data.action === 'details') {
-                // Lógica do modal de detalhes
-                ui.showToast(`Detalhes para Regulação ID: ${data.idp}`, 'info');
+                try {
+                    const detalhes = await api.fetchDetalhesRegulacao(data);
+                    // A UI de detalhes (modal) seria implementada aqui
+                    ui.showToast(`Detalhes para Regulação ID: ${data.idp} carregados.`, 'info');
+                    console.log(detalhes);
+                } catch (e) { ui.showToast(e.message, 'error'); }
             }
         }
     });
 }
 
+/**
+ * Configura e renderiza a tabela de agendamentos de exame.
+ * @param {object} user - O objeto do utilizador.
+ */
+function renderAgendamentosExame(user) {
+    ui.createSectionWithPaginatedTable({
+        containerId: 'agendamentosExamePanel',
+        title: 'Agendamentos de Exame',
+        apiCall: api.fetchAgendamentosExame,
+        apiParams: { 
+            searchField: 'isen.isenCod', 
+            searchString: user.isenCod, 
+            rows: state.settings.itemsPerPage 
+        },
+        columns: [
+            { label: 'Data Prevista' }, { label: 'Paciente' }, { label: 'CPF' },
+            { label: 'Exame' }, { label: 'Unidade' }, { label: 'Status' }, { label: 'Ações' }
+        ],
+        rowFormatter: (item) => {
+            const c = item.cell;
+            const btnImprimir = `<button title='Imprimir guia' data-action="print-guide" data-idp='${c[0]}' data-ids='${c[1]}'>🖨️</button>`;
+            return `<tr>
+                <td>${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td>
+                <td>${c[5]}</td><td>${c[6]}</td><td>${c[7]}</td><td>${btnImprimir}</td>
+            </tr>`;
+        },
+        onRowButtonClick: async (event, data) => {
+            if (data.action === 'print-guide') {
+                try {
+                    await api.fetchImprimirGuiaExame(data.idp, data.ids);
+                } catch (e) { ui.showToast(e.message, 'error'); }
+            }
+        }
+    });
+}
 
 /**
  * Utilitário para separar procedimento e origem da especialidade.
@@ -305,3 +470,34 @@ function extrairProcedimentoOrigem(especialidade) {
   };
 }
 
+/**
+ * Calcula a idade a partir de uma data de nascimento no formato DD/MM/YYYY.
+ * @param {string} dataNascimento - A data de nascimento.
+ * @returns {number|string} A idade em anos ou 'N/A' se a data for inválida.
+ */
+function calcularIdade(dataNascimento) {
+  if (!dataNascimento || typeof dataNascimento !== 'string') {
+    return 'N/A';
+  }
+  const partes = dataNascimento.split('/');
+  if (partes.length !== 3) {
+    return 'N/A';
+  }
+  const dia = parseInt(partes[0], 10);
+  const mes = parseInt(partes[1], 10) - 1; // Mês é base 0 no JS
+  const ano = parseInt(partes[2], 10);
+
+  if (isNaN(dia) || isNaN(mes) || isNaN(ano)) {
+      return 'N/A';
+  }
+
+  const hoje = new Date();
+  const nascimento = new Date(ano, mes, dia);
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const m = hoje.getMonth() - nascimento.getMonth();
+
+  if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+    idade--;
+  }
+  return idade >= 0 ? idade : 'N/A';
+}

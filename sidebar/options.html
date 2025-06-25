@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Configurações - Regulador MV</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <h1>Configurações</h1>
+    <form id="settings-form">
+      <div class="form-group">
+        <label for="itemsPerPage">Itens por página nas tabelas:</label>
+        <input type="number" id="itemsPerPage" name="itemsPerPage" min="5" max="50" />
+      </div>
+      <button type="submit">Guardar</button>
+    </form>
+    <div id="status"></div>
+    <script src="options.js"></script>
+  </body>
+</html>

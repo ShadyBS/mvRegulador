@@ -12,10 +12,9 @@
   "host_permissions": [
     "http://saude.farroupilha.rs.gov.br/*"
   ],
+  "options_page": "sidebar/options.html",
   "side_panel": {
-    "default_path": "sidebar/popup.html",
-    "title": "Regulador MV",
-    "icon_path": "sidebar/icon128.png"
+    "default_path": "sidebar/popup.html"
   },
   "icons": {
     "16": "sidebar/icon16.png",

@@ -1,0 +1,22 @@
+{
+  "name": "mvregulador",
+  "version": "1.0.0",
+  "description": "mvRegulador\r Projeto desenvolvido majoritariamente em JavaScript, com suporte em CSS e HTML.",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint sidebar/*.js",
+    "format": "prettier --write sidebar/*.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShadyBS/mvRegulador.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ShadyBS/mvRegulador/issues"
+  },
+  "homepage": "https://github.com/ShadyBS/mvRegulador#readme"
+}

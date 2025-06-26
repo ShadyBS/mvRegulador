@@ -16,7 +16,8 @@ export const state = {
   selectedSuggestionIndex: -1,
   searchHistory: [],
   settings: {
-    itemsPerPage: 15 // Valor padrão
+    itemsPerPage: 15, // Valor padrão
+    prontuarioPeriodoPadrao: 'last_year' // Novo valor padrão
   }
 };
 

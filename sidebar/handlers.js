@@ -1,12 +1,7 @@
-/**
- * @file Módulo de Gestores de Eventos (Handlers).
- * Contém a lógica principal da aplicação que responde às interações do utilizador,
- * orquestrando chamadas à API e atualizações da UI.
- */
-
 import * as api from './api.js';
 import * as ui from './ui.js';
 import { state, setCurrentUser, setSuggestions, setSelectedSuggestionIndex, setSearchHistory, setSettings } from './state.js';
+import { logError } from './error-handler.js';
 
 // Elementos do DOM
 const inputBusca = document.getElementById('inputBusca');
@@ -34,7 +29,7 @@ export async function handleSearchInput(event) {
       ui.renderSuggestions(state.suggestions);
       resultadoEl.style.display = 'none';
     } catch (error) {
-      console.error('Erro ao buscar sugestões:', error);
+      logError(error, 'handleSearchInput');
       ui.showToast(`Erro: ${error.message}`, 'error');
       resultadoEl.style.display = 'none';
     } finally {
@@ -117,7 +112,7 @@ export async function handleSelectSuggestion(index) {
       ui.showToast('Detalhes do utilizador não encontrados.', 'error');
     }
   } catch (error) {
-    console.error('Erro ao selecionar sugestão:', error);
+    logError(error, 'handleSelectSuggestion');
     ui.showToast(`Erro ao buscar detalhes: ${error.message}`, 'error');
   } finally {
     ui.setSessionSpinner('sessao-usuario', false);
@@ -142,7 +137,7 @@ function clearAllSections() {
  * Carrega as configurações do utilizador a partir do storage.
  */
 export async function loadSettings() {
-    chrome.storage.sync.get({ settings: { itemsPerPage: 15 } }, (data) => {
+    chrome.storage.sync.get({ settings: { itemsPerPage: 15, prontuarioPeriodoPadrao: 'last_year' } }, (data) => {
         setSettings(data.settings);
     });
 }
@@ -222,29 +217,48 @@ async function handleHistoryClick(event) {
 }
 
 /**
- * Renderiza o dashboard com estatísticas do utilizador.
+ * Renderiza o dashboard com estatísticas e ações para o utilizador.
  * @param {object} user - O objeto do utilizador.
  */
 async function renderDashboard(user) {
     const container = document.getElementById('dashboard-container');
-    ui.renderSkeleton(container, 1, 3);
+    ui.renderSkeleton(container, 1, 4); // Skeleton para os cards de dados
 
     try {
         const userId = api.getUsuarioFullPK(user);
-        const [listaEsperaData, regulacoesData] = await Promise.all([
+        const [listaEsperaData, regulacoesData, gestanteData] = await Promise.all([
             api.fetchListaEsperaPorIsenPK({ isenPK: userId, rows: 1 }),
             api.fetchRegulacaoRegulador({ usuario: user, rows: 1 }),
+            user.entidadeFisica.entfSexo === 'Feminino' ? api.fetchStatusGestante({ isenFullPK: userId }) : Promise.resolve(null),
         ]);
 
         const idadeCalculada = calcularIdade(user.entidadeFisica?.entfDtNasc);
+        const statusGestacional = analisarStatusGestacional(gestanteData);
 
         const stats = {
             listaEspera: listaEsperaData.records || 0,
             regulacoes: regulacoesData.records || 0,
             idade: idadeCalculada,
+            gestacional: statusGestacional,
         };
 
+        const hasCryptoKey = !!user.isenFullPKCrypto;
+
         container.innerHTML = `
+            <div class="dashboard-action-card">
+                <select id="prontuario-periodo" title="Selecione o período para o prontuário">
+                    <option value="last_year">Último ano</option>
+                    <option value="last_6_months">Últimos 6 meses</option>
+                    <option value="all_time">Todo o período</option>
+                </select>
+                <button id="open-prontuario-btn" ${!hasCryptoKey ? 'disabled' : ''} title="${!hasCryptoKey ? 'ID de segurança do paciente não encontrado.' : 'Abrir prontuário completo'}">
+                    Abrir Prontuário
+                </button>
+            </div>
+            <div class="dashboard-card ${stats.gestacional.classe}">
+                <div class="value">${stats.gestacional.icone} ${stats.gestacional.valor}</div>
+                <div class="label">${stats.gestacional.rotulo}</div>
+            </div>
             <div class="dashboard-card ${stats.listaEspera > 0 ? 'alert' : ''}">
                 <div class="value">${stats.listaEspera}</div>
                 <div class="label">Lista de Espera</div>
@@ -258,9 +272,78 @@ async function renderDashboard(user) {
                 <div class="label">Idade</div>
             </div>
         `;
+
+        // Aplica o valor padrão das configurações e adiciona o event listener
+        document.getElementById('prontuario-periodo').value = state.settings.prontuarioPeriodoPadrao;
+        if (hasCryptoKey) {
+            document.getElementById('open-prontuario-btn').addEventListener('click', handleOpenProntuarioClick);
+        }
+
     } catch (e) {
+        logError(e, 'renderDashboard');
         container.innerHTML = `<div style="color: #c00; font-size: 12px; grid-column: 1 / -1;">Erro ao carregar dashboard.</div>`;
     }
+}
+
+
+/**
+ * Gestor para o clique no botão "Abrir Prontuário".
+ */
+async function handleOpenProntuarioClick() {
+    const prontuarioBtn = document.getElementById('open-prontuario-btn');
+    prontuarioBtn.disabled = true;
+    prontuarioBtn.textContent = 'A gerar...';
+    
+    try {
+        const user = state.currentUser;
+        if (!user || !user.isenFullPKCrypto) {
+            throw new Error('ID de segurança do paciente não encontrado.');
+        }
+
+        const periodoSelecionado = document.getElementById('prontuario-periodo').value;
+        const { dataInicial, dataFinal } = calcularDatas(periodoSelecionado);
+
+        const paramHash = await api.fetchProntuarioHash({
+            isenFullPKCrypto: user.isenFullPKCrypto,
+            dataInicial,
+            dataFinal,
+        });
+
+        const url = `http://saude.farroupilha.rs.gov.br/sigss/prontuarioAmbulatorial2.jsp?paramHash=${paramHash}`;
+        window.open(url, '_blank');
+
+    } catch (error) {
+        logError(error, 'handleOpenProntuarioClick');
+        ui.showToast(error.message, 'error');
+    } finally {
+        prontuarioBtn.disabled = false;
+        prontuarioBtn.textContent = 'Abrir Prontuário';
+    }
+}
+
+/**
+ * Calcula as datas inicial e final com base no período selecionado.
+ * @param {string} periodo - O valor do período (ex: 'last_year').
+ * @returns {{dataInicial: string, dataFinal: string}}
+ */
+function calcularDatas(periodo) {
+    const hoje = new Date();
+    const dataFinal = hoje.toLocaleDateString('pt-BR');
+    let dataInicial;
+
+    if (periodo === 'last_6_months') {
+        const dataPassada = new Date();
+        dataPassada.setMonth(hoje.getMonth() - 6);
+        dataInicial = dataPassada.toLocaleDateString('pt-BR');
+    } else if (periodo === 'all_time') {
+        // Usa uma data muito antiga para pegar "todo o período"
+        dataInicial = '01/01/1900';
+    } else { // Padrão é 'last_year'
+        const dataPassada = new Date();
+        dataPassada.setFullYear(hoje.getFullYear() - 1);
+        dataInicial = dataPassada.toLocaleDateString('pt-BR');
+    }
+    return { dataInicial, dataFinal };
 }
 
 /**
@@ -305,6 +388,7 @@ async function renderComparacaoCadsus(user) {
             const { html } = api.parseCadsusComparacaoResponse(htmlComparacao);
             comparacaoDiv.innerHTML = html;
         } catch (e) {
+            logError(e, 'renderComparacaoCadsus');
             comparacaoDiv.innerHTML = `<div style='color:#c00; padding:10px;'>Erro ao comparar: ${e.message}</div>`;
         }
     } else {
@@ -370,7 +454,10 @@ function renderListaEspera(user) {
             if (data.action === 'print-req') {
                 try {
                     await api.fetchImprimirRequisicaoExameNaoLab(data.idp, data.ids);
-                } catch (e) { ui.showToast(e.message, 'error'); }
+                } catch (e) {
+                    logError(e, 'onRowButtonClick:print-req');
+                    ui.showToast(e.message, 'error');
+                }
             }
         }
     });
@@ -414,7 +501,10 @@ function renderRegulacoes(user) {
                     // A UI de detalhes (modal) seria implementada aqui
                     ui.showToast(`Detalhes para Regulação ID: ${data.idp} carregados.`, 'info');
                     console.log(detalhes);
-                } catch (e) { ui.showToast(e.message, 'error'); }
+                } catch (e) {
+                    logError(e, 'onRowButtonClick:details');
+                    ui.showToast(e.message, 'error');
+                }
             }
         }
     });
@@ -450,7 +540,10 @@ function renderAgendamentosExame(user) {
             if (data.action === 'print-guide') {
                 try {
                     await api.fetchImprimirGuiaExame(data.idp, data.ids);
-                } catch (e) { ui.showToast(e.message, 'error'); }
+                } catch (e) {
+                    logError(e, 'onRowButtonClick:print-guide');
+                    ui.showToast(e.message, 'error');
+                }
             }
         }
     });
@@ -500,4 +593,53 @@ function calcularIdade(dataNascimento) {
     idade--;
   }
   return idade >= 0 ? idade : 'N/A';
+}
+
+/**
+ * Analisa os dados da gestação para determinar o status (Gestante, Puérpera, N/A).
+ * @param {object|null} gestanteData - Os dados retornados pela API fetchStatusGestante.
+ * @returns {object} Um objeto com o status formatado para a UI.
+ */
+function analisarStatusGestacional(gestanteData) {
+    if (!gestanteData || !gestanteData.isGestante) {
+        return { valor: 'Não', rotulo: 'Situação Gestacional', icone: '', classe: '' };
+    }
+
+    const { dpp, idadeGestacional } = gestanteData;
+    const partes = dpp.split('/');
+    if (partes.length !== 3) {
+        return { valor: 'Sim', rotulo: 'Gestante (DPP inválida)', icone: '🤰', classe: 'gestante' };
+    }
+    const dia = parseInt(partes[0], 10);
+    const mes = parseInt(partes[1], 10) - 1;
+    const ano = parseInt(partes[2], 10);
+    const dataProvavelParto = new Date(ano, mes, dia);
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas as datas
+
+    // Se a data do parto ainda não chegou
+    if (hoje <= dataProvavelParto) {
+        return {
+            valor: idadeGestacional.split(' ')[0], // Pega apenas o número de semanas
+            rotulo: 'Semanas Gestante',
+            icone: '🤰',
+            classe: 'gestante'
+        };
+    } else {
+        // Se a data do parto já passou, verifica se está no puerpério (até 45 dias após)
+        const diffEmMs = hoje.getTime() - dataProvavelParto.getTime();
+        const diffEmDias = Math.ceil(diffEmMs / (1000 * 60 * 60 * 24));
+
+        if (diffEmDias <= 45) {
+            return {
+                valor: `${diffEmDias}`,
+                rotulo: 'Dias no Puerpério',
+                icone: '👶',
+                classe: 'puerpera'
+            };
+        }
+    }
+
+    return { valor: 'Não', rotulo: 'Situação Gestacional', icone: '', classe: '' };
 }

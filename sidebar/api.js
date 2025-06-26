@@ -367,3 +367,42 @@ export async function fetchRequisicoesLaboratoriais({ idp, ids, page = 1, rows =
     }
     return response.json();
 }
+
+/**
+ * Gera o hash de acesso para o prontuário de um paciente.
+ * @endpoint POST /sigss/common/queryStrToParamHash
+ * @param {object} options
+ * @param {string} options.isenFullPKCrypto - O ID criptografado do paciente.
+ * @param {string} options.dataInicial - A data inicial no formato DD/MM/YYYY.
+ * @param {string} options.dataFinal - A data final no formato DD/MM/YYYY.
+ * @returns {Promise<string>} O paramHash para aceder ao prontuário.
+ */
+export async function fetchProntuarioHash({ isenFullPKCrypto, dataInicial, dataFinal }) {
+  const url = 'http://saude.farroupilha.rs.gov.br/sigss/common/queryStrToParamHash';
+
+  // 1. Constrói a string de parâmetros RAW, sem codificar nada ainda.
+  const rawParamString = `isenFullPKCrypto=${isenFullPKCrypto}&moip_idp=4&moip_ids=1&dataInicial=${dataInicial}&dataFinal=${dataFinal}&ppdc=t&consulta_basica=t&obs_enfermagem=t&encaminhamento=t&consulta_especializada=t&consulta_odonto=t&exame_solicitado=t&exame=t&triagem=t&procedimento=t&vacina=t&proc_odonto=t&medicamento_receitado=t&demais_orientacoes=t&medicamento_retirado=t&aih=t&acs=t&lista_espera=t&beneficio=f&internacao=t&apac=t&procedimento_coletivo=t&justificativa=&responsavelNome=&responsavelCPF=&isOdonto=t&isSoOdonto=f`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    },
+    // 2. O corpo da requisição é a chave 'paramString' seguida pelo VALOR TOTALMENTE CODIFICADO.
+    body: `paramString=${encodeURIComponent(rawParamString)}`,
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Não foi possível gerar o passe de acesso ao prontuário.');
+  }
+
+  const data = await response.json();
+
+  if (data && data.string) {
+    return data.string;
+  } else {
+    const errorMessage = data.mensagem || 'A resposta do servidor não continha o hash de acesso.';
+    throw new Error(errorMessage);
+  }
+}

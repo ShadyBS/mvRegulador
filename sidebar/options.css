@@ -80,3 +80,33 @@ button:hover {
 .feedback-link:hover {
     background-color: #005fa3;
 }
+/* === ESTILOS PRONTUÁRIO === */
+
+.dashboard-action-card {
+    grid-column: 1 / -1; /* Ocupa a linha inteira */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: #f0f9ff;
+    border: 1px solid #60a5fa;
+}
+.dashboard-action-card select {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.dashboard-action-card button {
+    background-color: #0078d7;
+    color: white;
+    font-weight: bold;
+    white-space: nowrap; /* Evita que o texto quebre */
+}
+.dashboard-action-card button:hover {
+    background-color: #005fa3;
+}
+.dashboard-action-card button:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+}

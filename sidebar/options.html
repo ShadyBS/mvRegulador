@@ -12,10 +12,17 @@
         <label for="itemsPerPage">Itens por página nas tabelas:</label>
         <input type="number" id="itemsPerPage" name="itemsPerPage" min="5" max="50" />
       </div>
+      <div class="form-group">
+        <label for="prontuarioPeriodoPadrao">Período Padrão do Prontuário:</label>
+        <select id="prontuarioPeriodoPadrao" name="prontuarioPeriodoPadrao">
+          <option value="last_year">Último ano</option>
+          <option value="last_6_months">Últimos 6 meses</option>
+          <option value="all_time">Todo o período</option>
+        </select>
+      </div>
       <button type="submit">Guardar</button>
     </form>
     <div id="status"></div>
-
     <div class="feedback-section">
       <h2>Feedback & Suporte</h2>
       <p>Encontrou um problema ou tem uma sugestão? Ajude a melhorar a extensão!</p>
@@ -26,7 +33,6 @@
         >Reportar um Problema ou Sugerir Melhoria</a
       >
     </div>
-
     <script src="options.js"></script>
   </body>
 </html>

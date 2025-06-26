@@ -15,6 +15,16 @@
           <label for="itemsPerPage">Itens por página nas tabelas:</label>
           <input type="number" id="itemsPerPage" name="itemsPerPage" min="5" max="50" />
         </div>
+        <div class="form-group">
+          <label for="prontuarioPeriodoPadrao"
+            >Período padrão para análise de prontuário:</label
+          >
+          <select id="prontuarioPeriodoPadrao" name="prontuarioPeriodoPadrao">
+            <option value="last_6_months">Últimos 6 meses</option>
+            <option value="last_year" selected>Último ano</option>
+            <option value="all_time">Todo o período</option>
+          </select>
+        </div>
         <button type="submit">Guardar Gerais</button>
       </form>
     </fieldset>
@@ -23,7 +33,7 @@
       <legend>Gerenciador de Tags Clínicas</legend>
       <div id="tag-builder">
         <div class="form-group">
-          <label for="tagName">Nome da Nova Tag:</label>
+          <label for="tagName">Nome da Nova Tag (ou editar existente):</label>
           <input
             type="text"
             id="tagName"
@@ -31,15 +41,35 @@
           />
         </div>
         <div class="form-group">
-          <label for="tagCodeSearch"
-            >Pesquisar e Adicionar Códigos (CID10/CIAP2):</label
-          >
+          <label for="tagCodeSearch">Pesquisar Códigos (CID10/CIAP2):</label>
           <input
             type="text"
             id="tagCodeSearch"
-            placeholder="Pesquise por nome ou código (ex: diabetes, I10)"
+            placeholder="Pesquise por nome ou código (ex: diabetes, I10, z000)"
           />
-          <div id="code-search-results"></div>
+          <!-- Container para os resultados da pesquisa e botões de ação -->
+          <div id="search-container" class="search-container">
+            <div id="code-search-results"></div>
+            <div id="search-actions" class="search-actions" style="display: none">
+              <div class="selection-toggles">
+                <button type="button" id="selectAllBtn" class="link-button">
+                  Selecionar Todos
+                </button>
+                <span>|</span>
+                <button type="button" id="deselectAllBtn" class="link-button">
+                  Limpar Seleção
+                </button>
+              </div>
+              <div class="main-actions">
+                <button id="addSelectedBtn" type="button">
+                  Adicionar Selecionados
+                </button>
+                <button id="clearSearchBtn" type="button" class="secondary">
+                  Limpar Busca
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>Códigos Associados a esta Tag:</label>
@@ -47,7 +77,7 @@
             <!-- Pills dos códigos selecionados aparecerão aqui -->
           </div>
         </div>
-        <button id="addTagBtn" type="button">Adicionar/Atualizar Tag</button>
+        <button id="addTagBtn" type="button">Guardar Tag</button>
       </div>
     </fieldset>
 

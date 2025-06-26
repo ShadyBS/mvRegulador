@@ -10,7 +10,7 @@ async function updateLocalTerminologyData() {
 
     const [cid10Response, ciap2Response] = await Promise.all([
       fetch(cid10Url),
-      fetch(ciap2Url)
+      fetch(ciap2Url),
     ]);
 
     if (!cid10Response.ok || !ciap2Response.ok) {
@@ -20,21 +20,28 @@ async function updateLocalTerminologyData() {
     const cid10Data = await cid10Response.json();
     const ciap2Data = await ciap2Response.json();
 
+    // Normaliza um código removendo caracteres não alfanuméricos e convertendo para minúsculas.
+    const normalizeCode = (code) =>
+      code.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
     // Extrai e formata os códigos para uma estrutura mais simples
     const formatCodes = (data, system) => {
       if (data.compose && data.compose.include) {
-        return data.compose.include.flatMap(i => i.concept || []).map(c => ({
-          code: c.code,
-          display: c.display,
-          system: system
-        }));
+        return data.compose.include
+          .flatMap((i) => i.concept || [])
+          .map((c) => ({
+            code: c.code,
+            display: c.display,
+            system: system,
+            normalized_code: normalizeCode(c.code), // Adiciona o código normalizado para pesquisa rápida
+          }));
       }
       return [];
     };
 
     const clinicalCodes = {
       cid10: formatCodes(cid10Data, 'CID-10'),
-      ciap2: formatCodes(ciap2Data, 'CIAP-2')
+      ciap2: formatCodes(ciap2Data, 'CIAP-2'),
     };
 
     // Guarda os dados processados no armazenamento local
@@ -51,35 +58,38 @@ async function updateLocalTerminologyData() {
 async function handleClinicalCodeSearch(query, sendResponse) {
   try {
     const result = await chrome.storage.local.get('clinicalCodes');
-    const { cid10 = [], ciap2 = [] } = result.clinicalCodes || {};
-    
-    if (cid10.length === 0 && ciap2.length === 0) {
-        // Se os dados ainda não foram carregados, tenta carregar agora
-        await updateLocalTerminologyData();
-        // Tenta a busca novamente após o carregamento
-        const updatedResult = await chrome.storage.local.get('clinicalCodes');
-        const { cid10: newCid10 = [], ciap2: newCiap2 = [] } = updatedResult.clinicalCodes || {};
-        performSearch(query, newCid10, newCiap2, sendResponse);
+    const codesData = result.clinicalCodes;
+
+    if (!codesData || !codesData.cid10 || codesData.cid10.length === 0) {
+      console.log('Dados de terminologia não encontrados. A iniciar descarga...');
+      await updateLocalTerminologyData();
+      const updatedResult = await chrome.storage.local.get('clinicalCodes');
+      performSearch(query, updatedResult.clinicalCodes, sendResponse);
     } else {
-        performSearch(query, cid10, ciap2, sendResponse);
+      performSearch(query, codesData, sendResponse);
     }
   } catch (error) {
     sendResponse({ success: false, error: error.message });
   }
 }
 
-function performSearch(query, cid10, ciap2, sendResponse) {
-    const lowerCaseQuery = query.toLowerCase();
-    const allCodes = [...cid10, ...ciap2];
+function performSearch(query, clinicalCodes, sendResponse) {
+  const { cid10 = [], ciap2 = [] } = clinicalCodes || {};
+  const allCodes = [...cid10, ...ciap2];
 
-    const filteredResults = allCodes.filter(item => 
-        item.code.toLowerCase().includes(lowerCaseQuery) ||
-        item.display.toLowerCase().includes(lowerCaseQuery)
-    );
+  // Normaliza o termo da pesquisa
+  const lowerCaseQuery = query.toLowerCase();
+  const normalizedQuery = lowerCaseQuery.replace(/[^a-zA-Z0-9]/g, '');
 
-    sendResponse({ success: true, data: filteredResults });
+  const filteredResults = allCodes.filter(
+    (item) =>
+      // Compara com o código normalizado ou com o texto da descrição
+      item.normalized_code.includes(normalizedQuery) ||
+      item.display.toLowerCase().includes(lowerCaseQuery)
+  );
+
+  sendResponse({ success: true, data: filteredResults });
 }
-
 
 /**
  * Listener principal de mensagens da extensão.
@@ -89,30 +99,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleClinicalCodeSearch(message.query, sendResponse);
     return true; // Indica que a resposta será assíncrona
   }
-
-  if (message.type === 'PRONTUARIO_TEXT') {
-    chrome.runtime.sendMessage({
-        type: 'PRONTUARIO_TEXT_FORWARD',
-        text: message.text,
-        tabId: sender.tab.id
-    });
-  }
 });
 
 // Listener existente do menu de contexto
 chrome.runtime.onInstalled.addListener(() => {
   // Descarrega os dados na primeira instalação
   updateLocalTerminologyData();
-  
+
   chrome.contextMenus.create({
-    id: "pesquisar-usuario-mvregulador",
-    title: "Pesquisar usuário no mvRegulador",
-    contexts: ["selection"]
+    id: 'pesquisar-usuario-mvregulador',
+    title: 'Pesquisar usuário no mvRegulador',
+    contexts: ['selection'],
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "pesquisar-usuario-mvregulador" && info.selectionText) {
+  if (info.menuItemId === 'pesquisar-usuario-mvregulador' && info.selectionText) {
     chrome.storage.local.set({ termoBuscaMV: info.selectionText });
     if (chrome.sidePanel) {
       chrome.sidePanel.open({ windowId: tab.windowId });

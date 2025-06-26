@@ -1,5 +1,6 @@
 import * as api from './api.js';
 import * as ui from './ui.js';
+import * as parser from './parser.js';
 import { state, setCurrentUser, setSuggestions, setSelectedSuggestionIndex, setSearchHistory, setSettings } from './state.js';
 import { logError } from './error-handler.js';
 
@@ -388,7 +389,8 @@ async function applyPatientTags(user) {
       // Carrega as tags salvas e compara
       chrome.storage.sync.get({ clinicalTags: [] }, (data) => {
           const matchingTags = data.clinicalTags.filter(tag => 
-              tag.codes.some(code => codesInProntuario.has(code))
+              // LÓGICA ATUALIZADA para a nova estrutura de dados
+              tag.codes.some(codeObj => codesInProntuario.has(codeObj.code))
           ).map(tag => tag.tagName);
           
           ui.renderPatientTags(matchingTags);

@@ -406,3 +406,53 @@ export async function fetchProntuarioHash({ isenFullPKCrypto, dataInicial, dataF
     throw new Error(errorMessage);
   }
 }
+/**
+ * Abre o prontuário numa aba de fundo, extrai o seu texto e fecha a aba.
+ * @param {object} options
+ * @returns {Promise<string>} O texto extraído do corpo do prontuário.
+ */
+export function fetchProntuarioText({ isenFullPKCrypto, dataInicial, dataFinal }) {
+  return new Promise(async (resolve, reject) => {
+      try {
+          const paramHash = await fetchProntuarioHash({ isenFullPKCrypto, dataInicial, dataFinal });
+          const url = `http://saude.farroupilha.rs.gov.br/sigss/prontuarioAmbulatorial2.jsp?paramHash=${paramHash}`;
+
+          // Abre a aba em segundo plano
+          const newTab = await chrome.tabs.create({ url, active: false });
+
+          // Listener para receber a mensagem do scraper
+          const listener = (message, sender) => {
+              // Garante que a mensagem veio da aba que acabámos de abrir
+              if (sender.tab && sender.tab.id === newTab.id) {
+                  chrome.runtime.onMessage.removeListener(listener); // Limpa o listener
+                  chrome.tabs.remove(newTab.id); // Fecha a aba de prontuário
+
+                  if (message.type === 'PRONTUARIO_TEXT') {
+                      resolve(message.text);
+                  } else if (message.type === 'PRONTUARIO_ERROR') {
+                      reject(new Error(`Erro no scraper do prontuário: ${message.error}`));
+                  }
+              }
+          };
+          chrome.runtime.onMessage.addListener(listener);
+
+          // Injeta o script na aba criada
+          await chrome.scripting.executeScript({
+              target: { tabId: newTab.id },
+              files: ['sidebar/prontuario-scraper.js']
+          });
+
+          // Timeout para garantir que o processo não fica preso
+          setTimeout(() => {
+              chrome.runtime.onMessage.removeListener(listener);
+              chrome.tabs.query({ id: newTab.id }, (tabs) => {
+                  if (tabs.length > 0) chrome.tabs.remove(newTab.id);
+              });
+              reject(new Error('Timeout: Não foi possível extrair o texto do prontuário em 20 segundos.'));
+          }, 20000);
+
+      } catch (error) {
+          reject(error);
+      }
+  });
+}

@@ -8,10 +8,11 @@
     "storage",
     "sidePanel",
     "contextMenus",
-    "scripting" 
+    "scripting"
   ],
   "host_permissions": [
-    "http://saude.farroupilha.rs.gov.br/*"
+    "http://saude.farroupilha.rs.gov.br/*",
+    "https://terminologia.saude.gov.br/*"
   ],
   "options_page": "sidebar/options.html",
   "side_panel": {
@@ -27,8 +28,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://saude.farroupilha.rs.gov.br/sigss/*"],
-      "js": ["sidebar/content-script.js"],
+      "matches": [
+        "http://saude.farroupilha.rs.gov.br/sigss/*"
+      ],
+      "js": [
+        "sidebar/content-script.js"
+      ],
       "run_at": "document_end"
     }
   ],

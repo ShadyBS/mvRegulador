@@ -11,13 +11,13 @@ let currentTagCodes = new Set();
 function saveGeneralSettings(e) {
   e.preventDefault();
   const itemsPerPage = document.getElementById('itemsPerPage').value;
+  const prontuarioPeriodoPadrao = document.getElementById('prontuarioPeriodoPadrao').value;
 
   chrome.storage.sync.get({ settings: {} }, (data) => {
-    const prontuarioPeriodoPadrao = document.getElementById('prontuarioPeriodoPadrao')?.value || 'last_year';
     const newSettings = {
       ...data.settings,
       itemsPerPage: parseInt(itemsPerPage, 10) || 15,
-      prontuarioPeriodoPadrao: prontuarioPeriodoPadrao
+      prontuarioPeriodoPadrao: prontuarioPeriodoPadrao || 'last_year'
     };
     chrome.storage.sync.set({ settings: newSettings }, () => showStatus('Configurações gerais guardadas!'));
   });
@@ -48,7 +48,7 @@ function debounce(func, delay) {
 }
 
 /**
- * Procura códigos CID-10 e CIAP-2 na API oficial do Ministério da Saúde.
+ * Envia uma mensagem ao background script para procurar códigos e renderiza o resultado.
  * @param {string} query - O termo a ser pesquisado.
  */
 async function searchClinicalCodes(query) {
@@ -59,58 +59,41 @@ async function searchClinicalCodes(query) {
   }
   resultsContainer.innerHTML = '<div class="search-result-item"><span>A pesquisar...</span></div>';
   
-  try {
-    const url = 'https://simplificador.terminologia.saude.gov.br/api/search';
-    const body = {
-      "display": 1,
-      "text": query,
-      "semantic_tags": ["procedure", "disorder", "finding"], // Tags para abranger mais resultados
-      "count": 10 // Limita a 10 resultados
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Serviço de busca indisponível (status: ${response.status})`);
-    }
-
-    const data = await response.json();
-    
-    resultsContainer.innerHTML = '';
-    if (data.matches && data.matches.length > 0) {
-      data.matches.forEach(item => {
-        // A API retorna o código dentro de 'term' após os dois pontos
-        const codeMatch = item.term.match(/(CID-10|CIAP2)\s-\s(.+)/);
-        const code = codeMatch ? item.code : "N/A";
-        const description = item.term;
-        
-        if (code !== "N/A") {
+  // Envia a mensagem para o background script em vez de fazer o fetch
+  chrome.runtime.sendMessage(
+    { type: 'SEARCH_CLINICAL_CODES', query: query },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        resultsContainer.innerHTML = `<div class="search-result-item" style="color: #b91c1c;">Erro de comunicação: ${chrome.runtime.lastError.message}</div>`;
+        return;
+      }
+      
+      if (response && response.success) {
+        const allResults = response.data;
+        resultsContainer.innerHTML = '';
+        if (allResults.length > 0) {
+          allResults.slice(0, 20).forEach(item => {
             const resultDiv = document.createElement('div');
             resultDiv.className = 'search-result-item';
             resultDiv.innerHTML = `
-              <span><b>${code}</b> - ${description}</span>
-              <button type="button" class="add-code-btn" data-code="${code}">Adicionar</button>
+              <span><b>[${item.system}] ${item.code}</b> - ${item.display}</span>
+              <button type="button" class="add-code-btn" data-code="${item.code}">Adicionar</button>
             `;
             resultsContainer.appendChild(resultDiv);
+          });
+        } else {
+          resultsContainer.innerHTML = '<div class="search-result-item"><span>Nenhum resultado encontrado.</span></div>';
         }
-      });
-      if (resultsContainer.children.length === 0) {
-         resultsContainer.innerHTML = '<div class="search-result-item"><span>Nenhum código CID/CIAP encontrado.</span></div>';
+      } else {
+        const errorMessage = response ? response.error : 'Erro desconhecido.';
+        resultsContainer.innerHTML = `<div class="search-result-item" style="color: #b91c1c;">Erro ao pesquisar: ${errorMessage}</div>`;
+        console.error("Erro na busca de códigos:", errorMessage);
       }
-    } else {
-      resultsContainer.innerHTML = '<div class="search-result-item"><span>Nenhum resultado encontrado.</span></div>';
     }
-  } catch (error) {
-    resultsContainer.innerHTML = `<div class="search-result-item" style="color: #b91c1c;">Erro ao pesquisar: ${error.message}</div>`;
-    console.error("Erro na busca de códigos:", error);
-  }
+  );
 }
 
-const debouncedSearch = debounce(searchClinicalCodes, 500);
+const debouncedSearch = debounce(searchClinicalCodes, 300);
 
 /**
  * Adiciona um código à lista de códigos associados da tag atual.

@@ -32,14 +32,26 @@
     <fieldset class="settings-section">
       <legend>Gerenciador de Tags Clínicas</legend>
       <div id="tag-builder">
-        <!-- Nome da Tag (comum a ambos os tipos) -->
-        <div class="form-group">
-          <label for="tagName">Nome da Nova Tag (ou editar existente):</label>
-          <input
-            type="text"
-            id="tagName"
-            placeholder="Ex: Risco Cardiovascular, Acamado, Alergias"
-          />
+        <!-- Nome da Tag e Cores -->
+        <div class="form-group-row">
+          <div class="form-group" style="flex-grow: 1">
+            <label for="tagName">Nome da Nova Tag (ou editar existente):</label>
+            <input
+              type="text"
+              id="tagName"
+              placeholder="Ex: Risco Cardiovascular, Acamado, Alergias"
+            />
+          </div>
+          <div class="color-picker-group">
+            <div class="form-group">
+              <label for="tagBgColor">Fundo</label>
+              <input type="color" id="tagBgColor" value="#fca5a5" />
+            </div>
+            <div class="form-group">
+              <label for="tagTextColor">Texto</label>
+              <input type="color" id="tagTextColor" value="#991b1b" />
+            </div>
+          </div>
         </div>
 
         <!-- Seletor de Tipo de Tag -->

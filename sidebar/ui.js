@@ -4,10 +4,6 @@
  * HTML e controlar elementos visuais da interface.
  */
 
-/**
- * Renderiza a lista de sugestões de pesquisa.
- * @param {Array<string[]>} suggestions - A lista de sugestões vinda do estado.
- */
 export function renderSuggestions(suggestions) {
   const listElement = document.getElementById('listaSugestoes');
   listElement.innerHTML = '';
@@ -25,10 +21,6 @@ export function renderSuggestions(suggestions) {
   }
 }
 
-/**
- * Atualiza o destaque visual na lista de sugestões.
- * @param {number} index - O índice da sugestão a ser destacada.
- */
 export function updateSuggestionSelection(index) {
   const listElement = document.getElementById('listaSugestoes');
   const lis = listElement.querySelectorAll('li');
@@ -42,11 +34,6 @@ export function updateSuggestionSelection(index) {
   });
 }
 
-/**
- * Renderiza a secção de dados do utilizador.
- * @param {object} userData - Os dados do utilizador a serem renderizados.
- * @param {string|null} photoHTML - O HTML para a foto do utilizador.
- */
 export function renderUserCard(userData, photoHTML) {
   const cardUsuario = document.getElementById('cardUsuario');
   const userDetailsHTML = renderObjectAsTree(userData);
@@ -56,7 +43,7 @@ export function renderUserCard(userData, photoHTML) {
 
   cardUsuario.querySelectorAll('.tree-toggle').forEach((span) => {
     span.addEventListener('click', function () {
-      const target = cardUsuario.querySelector('#' + span.dataset.target);
+      const target = document.getElementById(span.dataset.target);
       if (target && target.style.display === 'none') {
         target.style.display = 'block';
         span.textContent = '▼';
@@ -68,37 +55,28 @@ export function renderUserCard(userData, photoHTML) {
   });
 }
 
-/**
- * Converte um objeto em uma lista HTML aninhada e expansível (árvore).
- * @private
- * @param {object} obj - O objeto a ser renderizado.
- * @param {string} [prefixo=''] - Um prefixo para garantir IDs únicos.
- * @returns {string} O HTML da lista.
- */
 function renderObjectAsTree(obj, prefixo = '') {
   let html = '<ul style="list-style:none;padding-left:16px;">';
   for (const chave in obj) {
-    const valor = obj[chave];
-    if (typeof valor === 'object' && valor !== null) {
-      const id = 'tree_' + prefixo.replace(/\./g, '_') + chave;
-      html += `<li><span class="tree-toggle" data-target="${id}" style="cursor:pointer;color:#0078d7;">▶</span> <strong>${chave}</strong>: <span style="color:#888;">{...}</span><div id="${id}" style="display:none;">${renderObjectAsTree(
-        valor,
-        prefixo + chave + '.'
-      )}</div></li>`;
-    } else {
-      const escapedValue = String(valor).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      html += `<li><strong>${chave}</strong>: <span style="color:#222;">${escapedValue}</span></li>`;
+    // Adicionado hasOwnProperty para segurança e para evitar iterar sobre propriedades herdadas.
+    if (Object.prototype.hasOwnProperty.call(obj, chave)) {
+        const valor = obj[chave];
+        if (typeof valor === 'object' && valor !== null) {
+          const id = 'tree_' + prefixo.replace(/\./g, '_') + chave;
+          html += `<li><span class="tree-toggle" data-target="${id}" style="cursor:pointer;color:#0078d7;">▶</span> <strong>${chave}</strong>: <span style="color:#888;">{...}</span><div id="${id}" style="display:none;">${renderObjectAsTree(
+            valor,
+            prefixo + chave + '.'
+          )}</div></li>`;
+        } else {
+          const escapedValue = String(valor).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          html += `<li><strong>${chave}</strong>: <span style="color:#222;">${escapedValue}</span></li>`;
+        }
     }
   }
   html += '</ul>';
   return html;
 }
 
-/**
- * Exibe ou esconde um spinner de carregamento no cabeçalho de uma secção.
- * @param {string} sessionClass - A classe CSS da secção.
- * @param {boolean} isActive - True para mostrar, false para esconder.
- */
 export function setSessionSpinner(sessionClass, isActive) {
   const header = document.querySelector(`.${sessionClass} .accordion`);
   if (!header) return;
@@ -116,12 +94,6 @@ export function setSessionSpinner(sessionClass, isActive) {
   }
 }
 
-/**
- * Exibe uma notificação toast.
- * @param {string} message - A mensagem a ser exibida.
- * @param {'info' | 'success' | 'error'} [type='info'] - O tipo de notificação.
- * @param {number} [duration=3000] - A duração em milissegundos.
- */
 export function showToast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -129,7 +101,6 @@ export function showToast(message, type = 'info', duration = 3000) {
   toast.textContent = message;
   container.appendChild(toast);
 
-  // Força o reflow para a transição funcionar
   setTimeout(() => toast.classList.add('show'), 10);
 
   setTimeout(() => {
@@ -138,13 +109,6 @@ export function showToast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
-
-/**
- * Renderiza um skeleton de tabela para indicar o carregamento.
- * @param {HTMLElement} container - O elemento onde o skeleton será renderizado.
- * @param {number} rows - O número de linhas do skeleton.
- * @param {number} cols - O número de colunas.
- */
 export function renderSkeleton(container, rows = 5, cols = 4) {
     let skeletonHTML = `<table class="tabela-padrao skeleton-table"><tbody>`;
     for (let i = 0; i < rows; i++) {
@@ -158,37 +122,26 @@ export function renderSkeleton(container, rows = 5, cols = 4) {
     container.innerHTML = skeletonHTML;
 }
 
-/**
- * Renderiza as tags do paciente na UI.
- * @param {Array<string>} tags - Um array com os nomes das tags a serem exibidas.
- */
 export function renderPatientTags(tags) {
   const container = document.getElementById('patient-tags-container');
-  container.innerHTML = ''; // Limpa as tags anteriores
+  container.innerHTML = '';
   if (tags.length > 0) {
-    tags.forEach(tagName => {
+    tags.forEach(tag => {
       const tagEl = document.createElement('div');
       tagEl.className = 'patient-tag';
-      tagEl.textContent = tagName;
+      tagEl.textContent = tag.tagName;
+      
+      const colors = tag.colors || { bg: '#fca5a5', text: '#991b1b' };
+      tagEl.style.backgroundColor = colors.bg;
+      tagEl.style.color = colors.text;
+      
       container.appendChild(tagEl);
     });
   }
 }
 
-
-/**
- * Função genérica para criar uma secção com título, filtros (opcional) e uma tabela paginada.
- * @param {object} config
- * @param {string} config.containerId - ID do elemento container do painel.
- * @param {string} config.title - Título da secção.
- * @param {object} config.apiCall - A função da API a ser chamada para obter os dados.
- * @param {object} config.apiParams - Os parâmetros para a chamada da API.
- * @param {Array<{key: string, label: string}>} config.columns - Definições das colunas da tabela.
- * @param {function(object): string} [config.rowFormatter] - Função opcional para formatar uma linha de dados em HTML.
- * @param {Array<object>} [config.filters] - Definições para os controlos de filtro.
- */
 export async function createSectionWithPaginatedTable(config) {
-    const { containerId, title, apiCall, apiParams, columns, rowFormatter, filters } = config;
+    const { containerId, title, apiCall, apiParams, columns, rowFormatter, filters, onRowButtonClick } = config;
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -256,10 +209,10 @@ export async function createSectionWithPaginatedTable(config) {
                     fetchDataAndRender(parseInt(btn.dataset.page), extraApiParams);
                 });
             });
-            // Adiciona listeners para quaisquer botões dentro das linhas da tabela
-            if (config.onRowButtonClick) {
+
+            if (onRowButtonClick) {
                 tableContainer.querySelectorAll('[data-action]').forEach(btn => {
-                    btn.addEventListener('click', (e) => config.onRowButtonClick(e, btn.dataset));
+                    btn.addEventListener('click', (e) => onRowButtonClick(e, btn.dataset));
                 })
             }
 

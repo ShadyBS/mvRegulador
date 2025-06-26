@@ -26,6 +26,11 @@ h1 {
 .form-group {
   margin-bottom: 20px;
 }
+.form-group-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
 label {
   display: block;
   margin-bottom: 8px;
@@ -60,23 +65,41 @@ button:disabled {
   background-color: #d1d5db;
   cursor: not-allowed;
 }
-button.secondary {
-  background: #64748b;
-}
-button.secondary:hover {
-  background: #475569;
-}
-#status {
-  margin-top: 15px;
-  font-weight: bold;
-  text-align: center;
-  color: #278b77;
-  height: 20px;
-}
 
 /* --- Estilos do Gerenciador de Tags --- */
 
-/* Seletor de Tipo de Tag */
+.color-picker-group {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.color-picker-group .form-group {
+    margin-bottom: 0;
+}
+.color-picker-group label {
+    font-size: 12px;
+    text-align: center;
+}
+input[type="color"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch {
+    border-radius: 3px;
+    border: none;
+}
+input[type="color"]::-moz-color-swatch {
+    border-radius: 3px;
+    border: none;
+}
+
 .tag-type-selector {
   display: flex;
   gap: 10px;
@@ -104,7 +127,6 @@ button.secondary:hover {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Construtor de Códigos */
 .search-container {
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -125,17 +147,17 @@ button.secondary:hover {
   background-color: #f0f9ff;
 }
 .search-result-item-cb input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin-right: 12px;
+    width: 18px;
+    height: 18px;
+    margin-right: 12px;
 }
 .search-result-item-cb .code-text {
-  font-weight: bold;
-  color: #005fa3;
+    font-weight: bold;
+    color: #005fa3;
 }
 .search-result-item-cb .display-text {
-  margin-left: 8px;
-  color: #333;
+    margin-left: 8px;
+    color: #333;
 }
 .search-actions {
   padding: 10px;
@@ -161,12 +183,7 @@ button.secondary:hover {
   padding: 0;
   font-size: 12px;
 }
-.link-button:hover {
-  background: none;
-  color: #005fa3;
-}
 
-/* Construtor de Palavras-Chave */
 .rule-builder {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -198,14 +215,7 @@ button.secondary:hover {
 .regex-invalid {
     color: #dc2626;
 }
-input.regex-valid-border {
-    border-color: #16a34a;
-}
-input.regex-invalid-border {
-    border-color: #dc2626;
-}
 
-/* Lista de Itens e Tags */
 .pills-container {
   display: flex;
   flex-wrap: wrap;
@@ -256,9 +266,6 @@ input.regex-invalid-border {
   font-size: 16px;
   line-height: 1;
 }
-.pill .remove-pill:hover {
-  color: #334155;
-}
 
 #tag-list .tag-item {
   background-color: #fff;
@@ -273,9 +280,16 @@ input.regex-invalid-border {
   align-items: flex-start;
   margin-bottom: 10px;
 }
+#tag-list .tag-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 #tag-list .tag-name {
-  font-weight: bold;
-  color: #005fa3;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 14px;
 }
 #tag-list .tag-type-indicator {
     font-size: 10px;
@@ -294,8 +308,4 @@ input.regex-invalid-border {
   padding: 5px 10px;
   margin-left: 5px;
   cursor: pointer;
-}
-#tag-list .tag-actions .remove-btn {
-  border-color: #fca5a5;
-  color: #b91c1c;
 }

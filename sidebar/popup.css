@@ -1,20 +1,13 @@
 /* PADRONIZAÇÃO GERAL DA INTERFACE SIMPLIFICADA */
 body {
     font-family: 'Segoe UI', Arial, sans-serif;
-        font-size: 10px;
-        /* tamanho base da fonte */
-        margin: 0;
-        padding: 16px;
-        background: #f8fafc;
-        color: #222;
+    font-size: 10px;
+    margin: 0;
+    padding: 16px;
+    background: #f8fafc;
+    color: #222;
 }
-/* Garante que tabelas e campos sigam o padrão */
-table,
-th,
-td,
-input,
-button,
-select {
+table, th, td, input, button, select {
     font-family: inherit;
     font-size: inherit;
 }
@@ -120,157 +113,22 @@ button:disabled, .btn-paginacao:disabled {
     padding: 14px;
     margin-top: 8px;
 }
-.card-usuario strong {
-    color: #0078d7;
-}
-.foto-usuario-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 8px;
-}
 .foto-usuario {
     max-width: 120px;
     max-height: 120px;
     border-radius: 8px;
-    border: 2px solid #e3f1fd;
-    background: #f8fafc;
-}
-.compromissos-titulo {
-    font-weight: bold;
-    color: #0078d7;
-    margin-top: 18px;
-    margin-bottom: 6px;
-    font-size: 1.08em;
-    text-align: left;
 }
 .tabela-padrao {
     width: 100%;
     border-collapse: collapse;
     margin-top: 8px;
     font-size: 14px;
-    background: #fff;
-    border-radius: 8px;
 }
 .tabela-padrao th, .tabela-padrao td {
     border-bottom: 1px solid #e0e0e0;
     padding: 8px 10px;
     text-align: left;
 }
-.tabela-padrao th {
-    background: #eaf3fa;
-    font-weight: 700;
-}
-.tabela-padrao tr:nth-child(even) {
-    background: #f7fbfd;
-}
-.tabela-padrao tr:hover {
-    background: #e6f0fa;
-}
-.header-tabela-lista-espera {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-bottom: 2px;
-    min-height: 32px;
-}
-.paginacao-lista-espera {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.btn-paginacao {
-    background: #f5f8fa;
-    border: 1px solid #d0e0ef;
-    border-radius: 5px;
-    padding: 4px 10px;
-    font-size: 18px;
-    color: #0078d7;
-    cursor: pointer;
-}
-.btn-paginacao:disabled {
-    background: #f0f0f0;
-    color: #aaa;
-    border-color: #e0e0e0;
-    cursor: not-allowed;
-}
-.icon-paginacao {
-    font-size: 18px;
-    vertical-align: middle;
-}
-.paginacao-info {
-    font-size: 14px;
-    color: #333;
-    font-weight: 500;
-    margin: 0 4px;
-}
-.lds-dual-ring {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-}
-.lds-dual-ring:after {
-    content: " ";
-    display: block;
-    width: 14px;
-    height: 14px;
-    margin: 2px;
-    border-radius: 50%;
-    border: 2px solid #0078d7;
-    border-color: #0078d7 transparent #0078d7 transparent;
-    animation: lds-dual-ring 1s linear infinite;
-}
-@keyframes lds-dual-ring {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* === ESTILOS FASE 2 === */
-
-/* Formulário de Filtro */
-.filter-form {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    align-items: center;
-}
-.filter-form select {
-    flex-grow: 1;
-    padding: 6px;
-    border: 1px solid #cfd8dc;
-    border-radius: 4px;
-    background: #f8fafc;
-}
-.filter-form button {
-    padding: 6px 12px;
-    font-size: 0.9em;
-}
-
-
-/* Skeletons de Carregamento */
-.skeleton {
-    opacity: 0.7;
-    animation: shimmer 1.5s linear infinite;
-    background: linear-gradient(to right, #eff1f3 4%, #e2e2e2 25%, #eff1f3 36%);
-    background-size: 1000px 100%;
-}
-.skeleton-text {
-    width: 100%;
-    height: 1.2em;
-    border-radius: 4px;
-    margin-bottom: 0.5em;
-}
-.skeleton-text:last-child {
-    width: 80%;
-}
-.skeleton-table td {
-    padding: 0;
-}
-.skeleton-table .skeleton-text {
-    height: 2em; /* Altura corresponde à linha da tabela */
-    margin: 0.5em 0;
-}
-
 
 /* Notificações Toast */
 #toast-container {
@@ -297,29 +155,16 @@ button:disabled, .btn-paginacao:disabled {
     opacity: 1;
     transform: translateX(0);
 }
-.toast.info {
-    background-color: #0078d7;
-}
-.toast.success {
-    background-color: #278B77;
-}
-.toast.error {
-    background-color: #d32f2f;
-}
-/* === ESTILOS FASE 3 === */
+.toast.info { background-color: #0078d7; }
+.toast.success { background-color: #278B77; }
+.toast.error { background-color: #d32f2f; }
 
-/* Histórico de Pesquisa */
+/* Histórico e Dashboard */
 #history-container {
     margin: 10px 0;
     padding: 8px;
     background-color: #f1f5f9;
     border-radius: 6px;
-}
-#history-container h3 {
-    font-size: 12px;
-    color: #475569;
-    margin: 0 0 5px 0;
-    font-weight: 500;
 }
 .history-list {
     display: flex;
@@ -334,13 +179,7 @@ button:disabled, .btn-paginacao:disabled {
     border-radius: 12px;
     font-size: 12px;
     cursor: pointer;
-    transition: background-color 0.2s;
 }
-.history-item:hover {
-    background-color: #cbd5e1;
-}
-
-/* Dashboard do Paciente */
 #dashboard-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -362,12 +201,12 @@ button:disabled, .btn-paginacao:disabled {
 .dashboard-card .label {
     font-size: 12px;
     color: #555;
-    margin-top: 4px;
 }
 .dashboard-card.alert .value {
     color: #d32f2f;
 }
-/* === ESTILOS DAS TAGS DO PACIENTE === */
+
+/* Tags do Paciente */
 #patient-tags-container {
     padding: 10px 0;
     margin-bottom: 10px;
@@ -377,8 +216,7 @@ button:disabled, .btn-paginacao:disabled {
     border-bottom: 1px solid #e0e0e0;
 }
 .patient-tag {
-    background-color: #fca5a5; /* Vermelho claro */
-    color: #991b1b; /* Vermelho escuro */
+    /* As cores de fundo e texto serão aplicadas via JS */
     padding: 5px 12px;
     border-radius: 15px;
     font-size: 13px;

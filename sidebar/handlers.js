@@ -9,11 +9,6 @@ const inputBusca = document.getElementById('inputBusca');
 const listaSugestoes = document.getElementById('listaSugestoes');
 const resultadoEl = document.getElementById('resultado');
 
-/**
- * Gestor para o evento de digitação no campo de busca.
- * Aciona a busca de sugestões ao pressionar Enter.
- * @param {KeyboardEvent} event - O evento do teclado.
- */
 export async function handleSearchInput(event) {
   const termo = event.target.value.trim();
   if (event.key === 'Enter') {
@@ -32,17 +27,12 @@ export async function handleSearchInput(event) {
     } catch (error) {
       logError(error, 'handleSearchInput');
       ui.showToast(`Erro: ${error.message}`, 'error');
-      resultadoEl.style.display = 'none';
     } finally {
       ui.setSessionSpinner('sessao-usuario', false);
     }
   }
 }
 
-/**
- * Gestor para a navegação por teclado na lista de sugestões.
- * @param {KeyboardEvent} event - O evento do teclado.
- */
 export function handleSuggestionKeydown(event) {
   if (listaSugestoes.style.display !== 'block') return;
 
@@ -75,10 +65,6 @@ export function handleSuggestionKeydown(event) {
   }
 }
 
-/**
- * Lógica a ser executada quando uma sugestão é selecionada (via clique ou Enter).
- * @param {number} index - O índice da sugestão selecionada.
- */
 export async function handleSelectSuggestion(index) {
   if (index < 0 || index >= state.suggestions.length) return;
 
@@ -120,9 +106,6 @@ export async function handleSelectSuggestion(index) {
   }
 }
 
-/**
- * Limpa o conteúdo de todas as secções dinâmicas.
- */
 function clearAllSections() {
     document.getElementById('cardUsuario').innerHTML = '';
     document.getElementById('dashboard-container').innerHTML = '';
@@ -135,18 +118,12 @@ function clearAllSections() {
     if (comparacaoSessao) comparacaoSessao.remove();
 }
 
-/**
- * Carrega as configurações do utilizador a partir do storage.
- */
 export async function loadSettings() {
     chrome.storage.sync.get({ settings: { itemsPerPage: 15, prontuarioPeriodoPadrao: 'last_year' } }, (data) => {
         setSettings(data.settings);
     });
 }
 
-/**
- * Carrega e renderiza o histórico de pesquisas.
- */
 export async function loadAndRenderHistory() {
     chrome.storage.local.get({ searchHistory: [] }, (data) => {
         setSearchHistory(data.searchHistory);
@@ -154,10 +131,6 @@ export async function loadAndRenderHistory() {
     });
 }
 
-/**
- * Adiciona um utilizador ao histórico de pesquisa e guarda-o.
- * @param {object} user - O objeto do utilizador a adicionar.
- */
 function manageSearchHistory(user) {
     let history = state.searchHistory;
     const userIdentifier = api.getUsuarioFullPK(user);
@@ -180,9 +153,6 @@ function manageSearchHistory(user) {
     renderHistory();
 }
 
-/**
- * Renderiza a lista do histórico na UI.
- */
 function renderHistory() {
     const container = document.getElementById('history-container');
     container.innerHTML = '<h3>Histórico Recente:</h3>';
@@ -206,10 +176,6 @@ function renderHistory() {
     container.appendChild(list);
 }
 
-/**
- * Gestor para o clique num item do histórico.
- * @param {MouseEvent} event - O evento do clique.
- */
 async function handleHistoryClick(event) {
     const { idp, ids } = event.target.dataset;
     clearAllSections();
@@ -218,13 +184,9 @@ async function handleHistoryClick(event) {
     handleSelectSuggestion(0);
 }
 
-/**
- * Renderiza o dashboard com estatísticas e ações para o utilizador.
- * @param {object} user - O objeto do utilizador.
- */
 async function renderDashboard(user) {
     const container = document.getElementById('dashboard-container');
-    ui.renderSkeleton(container, 1, 4); // Skeleton para os cards de dados
+    ui.renderSkeleton(container, 1, 4); 
 
     try {
         const userId = api.getUsuarioFullPK(user);
@@ -275,7 +237,6 @@ async function renderDashboard(user) {
             </div>
         `;
 
-        // Aplica o valor padrão das configurações e adiciona o event listener
         document.getElementById('prontuario-periodo').value = state.settings.prontuarioPeriodoPadrao;
         if (hasCryptoKey) {
             document.getElementById('open-prontuario-btn').addEventListener('click', handleOpenProntuarioClick);
@@ -288,9 +249,6 @@ async function renderDashboard(user) {
 }
 
 
-/**
- * Gestor para o clique no botão "Abrir Prontuário".
- */
 async function handleOpenProntuarioClick() {
     const prontuarioBtn = document.getElementById('open-prontuario-btn');
     prontuarioBtn.disabled = true;
@@ -323,11 +281,6 @@ async function handleOpenProntuarioClick() {
     }
 }
 
-/**
- * Calcula as datas inicial e final com base no período selecionado.
- * @param {string} periodo - O valor do período (ex: 'last_year').
- * @returns {{dataInicial: string, dataFinal: string}}
- */
 function calcularDatas(periodo) {
     const hoje = new Date();
     const dataFinal = hoje.toLocaleDateString('pt-BR');
@@ -338,9 +291,8 @@ function calcularDatas(periodo) {
         dataPassada.setMonth(hoje.getMonth() - 6);
         dataInicial = dataPassada.toLocaleDateString('pt-BR');
     } else if (periodo === 'all_time') {
-        // Usa uma data muito antiga para pegar "todo o período"
         dataInicial = '01/01/1900';
-    } else { // Padrão é 'last_year'
+    } else {
         const dataPassada = new Date();
         dataPassada.setFullYear(hoje.getFullYear() - 1);
         dataInicial = dataPassada.toLocaleDateString('pt-BR');
@@ -348,10 +300,6 @@ function calcularDatas(periodo) {
     return { dataInicial, dataFinal };
 }
 
-/**
- * Orquestra a renderização de todas as secções de dados para o utilizador.
- * @param {object} user - O objeto do utilizador.
- */
 function renderAllSections(user) {
     renderDashboard(user);
     applyPatientTags(user);
@@ -362,36 +310,46 @@ function renderAllSections(user) {
     renderAgendamentosExame(user);
 }
 
-/**
- * Verifica se uma única regra de palavra-chave corresponde ao texto do prontuário.
- * @param {object} rule - A regra a ser testada.
- * @param {string} prontuarioText - O texto do prontuário em minúsculas.
- * @returns {boolean} - True se a regra corresponder, senão false.
- */
-function checkKeywordRule(rule, prontuarioText) {
+function checkKeywordRule(rule, prontuarioTextLower) {
   const value = rule.value.toLowerCase();
   switch (rule.matchType) {
     case 'contains':
-      return prontuarioText.includes(value);
+      return prontuarioTextLower.includes(value);
     case 'not_contains':
-      return !prontuarioText.includes(value);
+      return !prontuarioTextLower.includes(value);
     case 'regex':
       try {
-        // 'i' flag para case-insensitive
-        return new RegExp(rule.value, 'i').test(prontuarioText);
+        return new RegExp(rule.value, 'i').test(prontuarioTextLower);
       } catch (e) {
-        console.warn(`Regex inválida na tag: "${rule.value}". Erro:`, e);
-        return false; // Regex inválida não corresponde
+        return false;
       }
     default:
       return false;
   }
 }
 
-/**
- * Busca o prontuário, extrai os códigos e aplica as tags configuradas.
- * @param {object} user - O objeto do utilizador.
- */
+function checkTagMatch(tag, codesInProntuario, prontuarioTextLower) {
+    const type = tag.type || 'code';
+    const items = tag.items || tag.codes || [];
+
+    if (items.length === 0) return false;
+
+    if (type === 'code') {
+        return items.some(item => codesInProntuario.has(item.code));
+    }
+    
+    if (type === 'keyword') {
+        const logic = tag.matchLogic || 'OR';
+        if (logic === 'AND') {
+            return items.every(rule => checkKeywordRule(rule, prontuarioTextLower));
+        } else { // OR
+            return items.some(rule => checkKeywordRule(rule, prontuarioTextLower));
+        }
+    }
+    
+    return false;
+}
+
 async function applyPatientTags(user) {
     const container = document.getElementById('patient-tags-container');
     container.innerHTML = '<span style="font-size:12px; color:#555;">A analisar prontuário para tags...</span>';
@@ -409,33 +367,17 @@ async function applyPatientTags(user) {
       const prontuarioTextLower = prontuarioText.toLowerCase();
       const codesInProntuario = parser.extractCodes(prontuarioText);
       
-      chrome.storage.sync.get({ clinicalTags: [] }, (data) => {
-          const allTags = data.clinicalTags || [];
-          const matchingTags = [];
-
-          allTags.forEach(tag => {
-              const type = tag.type || 'code'; // Assume 'code' por defeito para retrocompatibilidade
-              let isMatch = false;
-
-              if (type === 'code') {
-                  const items = tag.items || tag.codes || []; // Retrocompatibilidade com 'codes'
-                  isMatch = items.some(item => codesInProntuario.has(item.code));
-              } else if (type === 'keyword') {
-                  const logic = tag.matchLogic || 'OR';
-                  const rules = tag.items || [];
-                  if (rules.length > 0) {
-                      if (logic === 'AND') {
-                          isMatch = rules.every(rule => checkKeywordRule(rule, prontuarioTextLower));
-                      } else { // OR
-                          isMatch = rules.some(rule => checkKeywordRule(rule, prontuarioTextLower));
-                      }
-                  }
+      chrome.storage.sync.get(null, (allStorageData) => {
+          const allTags = [];
+          for (const key in allStorageData) {
+              if (key.startsWith('tag_')) {
+                  allTags.push(allStorageData[key]);
               }
+          }
 
-              if (isMatch) {
-                  matchingTags.push(tag.tagName);
-              }
-          });
+          const matchingTags = allTags.filter(tag => 
+              checkTagMatch(tag, codesInProntuario, prontuarioTextLower)
+          );
           
           ui.renderPatientTags(matchingTags);
       });
@@ -446,10 +388,6 @@ async function applyPatientTags(user) {
     }
 }
 
-/**
- * Busca e renderiza a comparação com o CADSUS.
- * @param {object} user - O objeto do utilizador.
- */
 async function renderComparacaoCadsus(user) {
     let comparacaoSessao = document.getElementById("sessao-comparacao-cadsus");
     if (!comparacaoSessao) {
@@ -483,10 +421,6 @@ async function renderComparacaoCadsus(user) {
     }
 }
 
-/**
- * Configura e renderiza a tabela de compromissos.
- * @param {object} user - O objeto do utilizador.
- */
 function renderCompromissos(user) {
     const hoje = new Date();
     const dataFinal = hoje.toLocaleDateString('pt-BR');
@@ -511,10 +445,6 @@ function renderCompromissos(user) {
     });
 }
 
-/**
- * Configura e renderiza a tabela da lista de espera.
- * @param {object} user - O objeto do utilizador.
- */
 function renderListaEspera(user) {
     ui.createSectionWithPaginatedTable({
         containerId: 'listaEsperaUsuario',
@@ -550,10 +480,6 @@ function renderListaEspera(user) {
     });
 }
 
-/**
- * Configura e renderiza a tabela de regulações com filtros.
- * @param {object} user - O objeto do utilizador.
- */
 function renderRegulacoes(user) {
      ui.createSectionWithPaginatedTable({
         containerId: 'regulacaoPanel',
@@ -585,7 +511,6 @@ function renderRegulacoes(user) {
             if (data.action === 'details') {
                 try {
                     const detalhes = await api.fetchDetalhesRegulacao(data);
-                    // A UI de detalhes (modal) seria implementada aqui
                     ui.showToast(`Detalhes para Regulação ID: ${data.idp} carregados.`, 'info');
                     console.log(detalhes);
                 } catch (e) {
@@ -597,10 +522,6 @@ function renderRegulacoes(user) {
     });
 }
 
-/**
- * Configura e renderiza a tabela de agendamentos de exame.
- * @param {object} user - O objeto do utilizador.
- */
 function renderAgendamentosExame(user) {
     ui.createSectionWithPaginatedTable({
         containerId: 'agendamentosExamePanel',
@@ -636,11 +557,6 @@ function renderAgendamentosExame(user) {
     });
 }
 
-/**
- * Utilitário para separar procedimento e origem da especialidade.
- * @param {string} especialidade - O campo de especialidade da API.
- * @returns {{procedimento: string, origem: string}}
- */
 function extrairProcedimentoOrigem(especialidade) {
   if (!especialidade) return { procedimento: '', origem: '' };
   const partes = especialidade.split('; /');
@@ -650,48 +566,28 @@ function extrairProcedimentoOrigem(especialidade) {
   };
 }
 
-/**
- * Calcula a idade a partir de uma data de nascimento no formato DD/MM/YYYY.
- * @param {string} dataNascimento - A data de nascimento.
- * @returns {number|string} A idade em anos ou 'N/A' se a data for inválida.
- */
 function calcularIdade(dataNascimento) {
-  if (!dataNascimento || typeof dataNascimento !== 'string') {
-    return 'N/A';
-  }
+  if (!dataNascimento || typeof dataNascimento !== 'string') return 'N/A';
   const partes = dataNascimento.split('/');
-  if (partes.length !== 3) {
-    return 'N/A';
-  }
+  if (partes.length !== 3) return 'N/A';
   const dia = parseInt(partes[0], 10);
-  const mes = parseInt(partes[1], 10) - 1; // Mês é base 0 no JS
+  const mes = parseInt(partes[1], 10) - 1;
   const ano = parseInt(partes[2], 10);
-
-  if (isNaN(dia) || isNaN(mes) || isNaN(ano)) {
-      return 'N/A';
-  }
-
+  if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return 'N/A';
   const hoje = new Date();
   const nascimento = new Date(ano, mes, dia);
   let idade = hoje.getFullYear() - nascimento.getFullYear();
   const m = hoje.getMonth() - nascimento.getMonth();
-
   if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
     idade--;
   }
   return idade >= 0 ? idade : 'N/A';
 }
 
-/**
- * Analisa os dados da gestação para determinar o status (Gestante, Puérpera, N/A).
- * @param {object|null} gestanteData - Os dados retornados pela API fetchStatusGestante.
- * @returns {object} Um objeto com o status formatado para a UI.
- */
 function analisarStatusGestacional(gestanteData) {
     if (!gestanteData || !gestanteData.isGestante) {
         return { valor: 'Não', rotulo: 'Situação Gestacional', icone: '', classe: '' };
     }
-
     const { dpp, idadeGestacional } = gestanteData;
     const partes = dpp.split('/');
     if (partes.length !== 3) {
@@ -701,23 +597,19 @@ function analisarStatusGestacional(gestanteData) {
     const mes = parseInt(partes[1], 10) - 1;
     const ano = parseInt(partes[2], 10);
     const dataProvavelParto = new Date(ano, mes, dia);
-
     const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas as datas
+    hoje.setHours(0, 0, 0, 0);
 
-    // Se a data do parto ainda não chegou
     if (hoje <= dataProvavelParto) {
         return {
-            valor: idadeGestacional.split(' ')[0], // Pega apenas o número de semanas
+            valor: idadeGestacional.split(' ')[0],
             rotulo: 'Semanas Gestante',
             icone: '🤰',
             classe: 'gestante'
         };
     } else {
-        // Se a data do parto já passou, verifica se está no puerpério (até 45 dias após)
         const diffEmMs = hoje.getTime() - dataProvavelParto.getTime();
         const diffEmDias = Math.ceil(diffEmMs / (1000 * 60 * 60 * 24));
-
         if (diffEmDias <= 45) {
             return {
                 valor: `${diffEmDias}`,
@@ -727,6 +619,5 @@ function analisarStatusGestacional(gestanteData) {
             };
         }
     }
-
     return { valor: 'Não', rotulo: 'Situação Gestacional', icone: '', classe: '' };
 }

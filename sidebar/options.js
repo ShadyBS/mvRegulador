@@ -6,6 +6,8 @@ let currentTagItems = new Map(); // Usa um Map para evitar itens duplicados (có
 const DOMElements = {
   settingsForm: document.getElementById('settings-form'),
   tagNameInput: document.getElementById('tagName'),
+  tagBgColor: document.getElementById('tagBgColor'),
+  tagTextColor: document.getElementById('tagTextColor'),
   tagTypeRadios: document.querySelectorAll('input[name="tagType"]'),
   codeBuilder: document.getElementById('code-builder-container'),
   keywordBuilder: document.getElementById('keyword-builder-container'),
@@ -26,7 +28,7 @@ const DOMElements = {
   status: document.getElementById('status'),
 };
 
-// --- Funções de UI ---
+// --- Funções de UI e Utilitários ---
 
 function showStatus(message, type = 'success') {
   DOMElements.status.textContent = message;
@@ -40,28 +42,48 @@ function showStatus(message, type = 'success') {
 function updateBuilderUI(type) {
   DOMElements.codeBuilder.style.display = type === 'code' ? 'block' : 'none';
   DOMElements.keywordBuilder.style.display = type === 'keyword' ? 'block' : 'none';
+  clearSearch();
 }
 
 function clearSearch() {
-    DOMElements.tagCodeSearch.value = '';
-    DOMElements.searchResults.innerHTML = '';
-    DOMElements.searchActions.style.display = 'none';
+  if (DOMElements.tagCodeSearch) DOMElements.tagCodeSearch.value = '';
+  if (DOMElements.searchResults) DOMElements.searchResults.innerHTML = '';
+  if (DOMElements.searchActions) DOMElements.searchActions.style.display = 'none';
 }
 
-// --- Funções do Construtor de Tags ---
+function debounce(func, delay) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+}
 
 const debouncedSearch = debounce((query) => {
-    if (query.length < 3) {
+    if (query.length === 0) { // Limpa se o campo estiver vazio
         DOMElements.searchResults.innerHTML = '';
         DOMElements.searchActions.style.display = 'none';
+        return;
+    }
+    if (query.length < 3) {
         return;
     }
     searchClinicalCodes(query);
 }, 300);
 
+function getTagKey(tagName) {
+    return `tag_${tagName.replace(/\s/g, '_')}`;
+}
+
+// --- Lógica do Construtor de Tags ---
+
 async function searchClinicalCodes(query) {
   DOMElements.searchResults.innerHTML = '<div class="search-result-item-cb"><span>A pesquisar...</span></div>';
   chrome.runtime.sendMessage({ type: 'SEARCH_CLINICAL_CODES', query }, (response) => {
+    if (chrome.runtime.lastError) {
+        showStatus(`Erro de comunicação: ${chrome.runtime.lastError.message}`, 'error');
+        return;
+    }
     DOMElements.searchResults.innerHTML = '';
     if (response && response.success && response.data.length > 0) {
       response.data.slice(0, 50).forEach(item => {
@@ -90,7 +112,6 @@ function addSelectedCodes() {
     currentTagItems.set(itemData.code, itemData);
   });
   renderCurrentItems('code');
-  clearSearch();
 }
 
 function addKeywordRule() {
@@ -109,12 +130,9 @@ function addKeywordRule() {
         }
     }
     const rule = { matchType, value };
-    // Usar o valor e o tipo como chave para evitar duplicados exatos
     currentTagItems.set(`${matchType}-${value}`, rule);
     renderCurrentItems('keyword');
     DOMElements.ruleValueInput.value = '';
-    DOMElements.ruleValueInput.classList.remove('regex-valid-border', 'regex-invalid-border');
-    DOMElements.regexValidator.textContent = '';
 }
 
 function renderCurrentItems(type) {
@@ -125,7 +143,7 @@ function renderCurrentItems(type) {
     if (type === 'code') {
       pill.title = item.display;
       pill.innerHTML = `<span class="pill-code">${item.code}</span><span class="pill-display">${item.display}</span>`;
-    } else { // keyword
+    } else {
       pill.title = `${item.matchType}: ${item.value}`;
       pill.innerHTML = `<span class="pill-rule">${item.matchType.replace('_', ' ')}</span><span class="pill-value">${item.value}</span>`;
     }
@@ -141,7 +159,7 @@ function saveTag() {
     return;
   }
   if (currentTagItems.size === 0) {
-    showStatus('Adicione pelo menos um item (código ou regra) à tag.', 'error');
+    showStatus('Adicione pelo menos um item à tag.', 'error');
     return;
   }
   
@@ -151,19 +169,30 @@ function saveTag() {
     type,
     items: Array.from(currentTagItems.values()),
     matchLogic: type === 'keyword' ? document.querySelector('input[name="matchLogic"]:checked').value : 'OR',
+    colors: {
+        bg: DOMElements.tagBgColor.value,
+        text: DOMElements.tagTextColor.value,
+    }
   };
 
-  const tagIndex = savedTags.findIndex(t => t.tagName.toLowerCase() === tagName.toLowerCase());
-  if (tagIndex > -1) {
-    savedTags[tagIndex] = newTag;
-  } else {
-    savedTags.push(newTag);
-  }
+  const key = getTagKey(tagName);
+  const dataToSave = { [key]: newTag };
 
-  chrome.storage.sync.set({ clinicalTags: savedTags }, () => {
-    showStatus(`Tag "${tagName}" guardada com sucesso!`);
-    renderSavedTags();
-    clearTagBuilder();
+  chrome.storage.sync.set(dataToSave, () => {
+    if (chrome.runtime.lastError) {
+        showStatus(`Erro ao guardar tag: ${chrome.runtime.lastError.message}`, 'error');
+    } else {
+        showStatus(`Tag "${tagName}" guardada com sucesso!`);
+        // Atualiza a lista local e re-renderiza
+        const tagIndex = savedTags.findIndex(t => t.tagName.toLowerCase() === tagName.toLowerCase());
+        if(tagIndex > -1) {
+            savedTags[tagIndex] = newTag;
+        } else {
+            savedTags.push(newTag);
+        }
+        renderSavedTags();
+        clearTagBuilder();
+    }
   });
 }
 
@@ -173,15 +202,20 @@ function renderSavedTags() {
         DOMElements.tagList.innerHTML = '<p>Nenhuma tag configurada.</p>';
         return;
     }
+    // Ordena as tags por nome para uma exibição consistente
+    savedTags.sort((a, b) => a.tagName.localeCompare(b.tagName));
+
     savedTags.forEach(tag => {
         const item = document.createElement('div');
         item.className = 'tag-item';
         const type = tag.type || 'code';
         const logic = tag.matchLogic || 'OR';
+        const colors = tag.colors || { bg: '#e2e8f0', text: '#334155'};
+        
         item.innerHTML = `
             <div class="tag-header">
-                <div>
-                    <span class="tag-name">${tag.tagName}</span>
+                <div class="tag-name-wrapper">
+                    <span class="tag-name" style="background-color: ${colors.bg}; color: ${colors.text};">${tag.tagName}</span>
                     <span class="tag-type-indicator ${type}">${type === 'code' ? 'CÓDIGO' : `TEXTO (${logic})`}</span>
                 </div>
                 <div class="tag-actions">
@@ -209,11 +243,15 @@ function editTag(tagName) {
     clearTagBuilder();
     DOMElements.tagNameInput.value = tag.tagName;
     
+    const colors = tag.colors || { bg: '#fca5a5', text: '#991b1b' };
+    DOMElements.tagBgColor.value = colors.bg;
+    DOMElements.tagTextColor.value = colors.text;
+
     const type = tag.type || 'code';
     document.querySelector(`input[name="tagType"][value="${type}"]`).checked = true;
     updateBuilderUI(type);
     
-    const items = tag.items || tag.codes || [];
+    const items = tag.items || [];
     items.forEach(item => {
         const key = type === 'code' ? item.code : `${item.matchType}-${item.value}`;
         currentTagItems.set(key, item);
@@ -230,10 +268,15 @@ function editTag(tagName) {
 
 function deleteTag(tagName) {
     if (confirm(`Tem a certeza de que quer remover a tag "${tagName}"?`)) {
-        savedTags = savedTags.filter(t => t.tagName !== tagName);
-        chrome.storage.sync.set({ clinicalTags: savedTags }, () => {
-            showStatus(`Tag "${tagName}" removida.`, 'info');
-            renderSavedTags();
+        const key = getTagKey(tagName);
+        chrome.storage.sync.remove(key, () => {
+            if (chrome.runtime.lastError) {
+                showStatus(`Erro ao remover tag: ${chrome.runtime.lastError.message}`, 'error');
+            } else {
+                showStatus(`Tag "${tagName}" removida.`, 'info');
+                savedTags = savedTags.filter(t => t.tagName !== tagName);
+                renderSavedTags();
+            }
         });
     }
 }
@@ -242,21 +285,19 @@ function clearTagBuilder() {
   DOMElements.tagNameInput.value = '';
   currentTagItems.clear();
   clearSearch();
+  DOMElements.tagBgColor.value = '#fca5a5';
+  DOMElements.tagTextColor.value = '#991b1b';
   updateBuilderUI(document.querySelector('input[name="tagType"]:checked').value);
-  renderCurrentItems('code'); // Renderiza vazio
+  renderCurrentItems('code');
   DOMElements.ruleValueInput.value = '';
 }
 
 function validateRegex(pattern) {
     try {
         new RegExp(pattern);
-        DOMElements.ruleValueInput.classList.add('regex-valid-border');
-        DOMElements.ruleValueInput.classList.remove('regex-invalid-border');
         DOMElements.regexValidator.textContent = 'Regex válida.';
         DOMElements.regexValidator.className = 'regex-valid';
     } catch (e) {
-        DOMElements.ruleValueInput.classList.add('regex-invalid-border');
-        DOMElements.ruleValueInput.classList.remove('regex-valid-border');
         DOMElements.regexValidator.textContent = 'Regex inválida.';
         DOMElements.regexValidator.className = 'regex-invalid';
     }
@@ -264,41 +305,51 @@ function validateRegex(pattern) {
 
 // --- Funções de Inicialização e Migração ---
 
-function debounce(func, delay) {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), delay);
-  };
-}
+async function runMigrationIfNeeded(storageData) {
+    // Verifica se o formato antigo (um único array) existe.
+    if (storageData.clinicalTags && Array.isArray(storageData.clinicalTags)) {
+        showStatus('A migrar dados antigos das tags...', 'info');
+        const oldTags = storageData.clinicalTags;
+        const newTagsData = {};
 
-async function runMigrationIfNeeded(tags) {
-    let needsMigration = false;
-    tags.forEach(tag => {
-        if (!tag.type || !tag.items) {
-            needsMigration = true;
+        // Prepara os dados de terminologia para a migração
+        const terminology = await new Promise(resolve => chrome.storage.local.get('clinicalCodes', resolve));
+        const allCodes = [...(terminology.clinicalCodes?.cid10 || []), ...(terminology.clinicalCodes?.ciap2 || [])];
+        const codeMap = new Map(allCodes.map(c => [c.code, c.display]));
+
+        oldTags.forEach(tag => {
+            const key = getTagKey(tag.tagName);
+            const items = (tag.codes || []).map(codeString => ({
+                code: codeString,
+                display: codeMap.get(codeString) || 'Não encontrado',
+            }));
+            newTagsData[key] = {
+                tagName: tag.tagName,
+                type: 'code',
+                items,
+                matchLogic: 'OR',
+                colors: { bg: '#fca5a5', text: '#991b1b' }
+            };
+        });
+
+        // Guarda todos os novos itens e depois remove o antigo.
+        await new Promise(resolve => chrome.storage.sync.set(newTagsData, resolve));
+        await new Promise(resolve => chrome.storage.sync.remove('clinicalTags', resolve));
+
+        showStatus('Migração concluída com sucesso!', 'success');
+        
+        // Retorna apenas os valores das tags migradas
+        return Object.values(newTagsData);
+    }
+    
+    // Se não há migração, filtra os dados do storage para pegar apenas as tags.
+    const tags = [];
+    for (const key in storageData) {
+        if (key.startsWith('tag_')) {
+            tags.push(storageData[key]);
         }
-    });
-
-    if (!needsMigration) return tags;
-
-    showStatus('A atualizar formato antigo das tags...', 'info');
-    const terminology = await new Promise(resolve => chrome.storage.local.get('clinicalCodes', resolve));
-    const allCodes = [...(terminology.clinicalCodes.cid10 || []), ...(terminology.clinicalCodes.ciap2 || [])];
-    const codeMap = new Map(allCodes.map(c => [c.code, c.display]));
-
-    const migratedTags = tags.map(tag => {
-        if (tag.type && tag.items) return tag; // Já está no formato novo
-        const items = (tag.codes || []).map(codeString => ({
-            code: codeString,
-            display: codeMap.get(codeString) || 'Não encontrado',
-        }));
-        return { tagName: tag.tagName, type: 'code', items, matchLogic: 'OR' };
-    });
-
-    await new Promise(resolve => chrome.storage.sync.set({ clinicalTags: migratedTags }, resolve));
-    showStatus('Tags atualizadas com sucesso!', 'success');
-    return migratedTags;
+    }
+    return tags;
 }
 
 async function initialize() {
@@ -308,9 +359,9 @@ async function initialize() {
       document.getElementById('prontuarioPeriodoPadrao').value = data.settings.prontuarioPeriodoPadrao;
   });
 
-  // Carrega as tags e corre a migração se necessário
-  let { clinicalTags = [] } = await new Promise(resolve => chrome.storage.sync.get('clinicalTags', resolve));
-  savedTags = await runMigrationIfNeeded(clinicalTags);
+  // Carrega todos os dados, corre a migração se necessário, e depois renderiza.
+  const allStorageData = await new Promise(resolve => chrome.storage.sync.get(null, resolve));
+  savedTags = await runMigrationIfNeeded(allStorageData);
   renderSavedTags();
   
   // Event Listeners
@@ -328,15 +379,15 @@ async function initialize() {
   DOMElements.selectAllBtn.addEventListener('click', () => DOMElements.searchResults.querySelectorAll('input').forEach(cb => cb.checked = true));
   DOMElements.deselectAllBtn.addEventListener('click', () => DOMElements.searchResults.querySelectorAll('input').forEach(cb => cb.checked = false));
   DOMElements.addSelectedBtn.addEventListener('click', addSelectedCodes);
+  
   DOMElements.ruleValueInput.addEventListener('input', (e) => {
       if(DOMElements.ruleMatchType.value === 'regex') validateRegex(e.target.value);
   });
-  DOMElements.ruleMatchType.addEventListener('change', () => {
-      DOMElements.ruleValueInput.classList.remove('regex-valid-border', 'regex-invalid-border');
-      DOMElements.regexValidator.textContent = '';
-  });
+  DOMElements.ruleMatchType.addEventListener('change', () => DOMElements.ruleValueInput.classList.remove('regex-valid-border', 'regex-invalid-border'));
   DOMElements.addRuleBtn.addEventListener('click', addKeywordRule);
+  
   DOMElements.saveTagBtn.addEventListener('click', saveTag);
+  
   DOMElements.associatedItems.addEventListener('click', (e) => {
       const removeBtn = e.target.closest('.remove-pill');
       if (removeBtn) {

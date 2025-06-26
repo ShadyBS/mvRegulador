@@ -367,3 +367,20 @@ button:disabled, .btn-paginacao:disabled {
 .dashboard-card.alert .value {
     color: #d32f2f;
 }
+/* === ESTILOS DAS TAGS DO PACIENTE === */
+#patient-tags-container {
+    padding: 10px 0;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.patient-tag {
+    background-color: #fca5a5; /* Vermelho claro */
+    color: #991b1b; /* Vermelho escuro */
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 13px;
+    font-weight: 500;
+}

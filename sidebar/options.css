@@ -1,18 +1,27 @@
 body {
     font-family: 'Segoe UI', Arial, sans-serif;
     padding: 20px 40px;
-    max-width: 500px;
+    max-width: 600px;
     margin: 20px auto;
     background-color: #f8fafc;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
 }
 h1 {
     color: #0078d7;
     text-align: center;
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 10px;
-    margin-bottom: 20px;
+}
+.settings-section {
+    margin-top: 25px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+}
+.settings-section legend {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 0 10px;
+    color: #005fa3;
 }
 .form-group {
     margin-bottom: 20px;
@@ -23,12 +32,13 @@ label {
     font-weight: 500;
     color: #333;
 }
-input[type="number"] {
-    width: 100px;
+input[type="text"], input[type="number"] {
+    width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 14px;
+    box-sizing: border-box;
 }
 button {
     background: #278B77;
@@ -48,65 +58,101 @@ button:hover {
     font-weight: bold;
     text-align: center;
     color: #278B77;
+    height: 20px;
 }
 
-/* --- Novos Estilos --- */
+/* Estilos do Construtor de Tags */
+#code-search-results {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+.search-result-item {
+    padding: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+.search-result-item:hover {
+    background-color: #f0f9ff;
+}
+.search-result-item button {
+    background-color: #0078d7;
+    font-size: 12px;
+    padding: 4px 8px;
+}
+.pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-height: 40px;
+}
+.pill {
+    background-color: #e2e8f0;
+    color: #334155;
+    padding: 5px 10px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+.pill .remove-pill {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0;
+}
+.pill .remove-pill:hover {
+    color: #334155;
+}
+
+#tag-list .tag-item {
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+#tag-list .tag-name {
+    font-weight: bold;
+    color: #005fa3;
+    margin-bottom: 10px;
+}
+#tag-list .tag-codes .pill {
+    background-color: #f1f5f9;
+}
+#tag-list .tag-actions button {
+    background: none;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 5px 10px;
+    margin-left: 5px;
+}
+#tag-list .tag-actions .remove-btn {
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+/* Feedback Section */
 .feedback-section {
     margin-top: 40px;
     padding-top: 20px;
     border-top: 1px solid #e0e0e0;
 }
-.feedback-section h2 {
-    text-align: center;
-    color: #333;
-}
-.feedback-section p {
-    text-align: center;
-    color: #555;
-    font-size: 14px;
-}
-.feedback-link {
-    display: block;
-    width: fit-content;
-    margin: 15px auto 0 auto;
-    padding: 10px 20px;
-    background-color: #0078d7;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    transition: background-color 0.2s;
-}
-.feedback-link:hover {
-    background-color: #005fa3;
-}
-/* === ESTILOS PRONTUÁRIO === */
-
-.dashboard-action-card {
-    grid-column: 1 / -1; /* Ocupa a linha inteira */
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background-color: #f0f9ff;
-    border: 1px solid #60a5fa;
-}
-.dashboard-action-card select {
-    flex-grow: 1;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.dashboard-action-card button {
-    background-color: #0078d7;
-    color: white;
-    font-weight: bold;
-    white-space: nowrap; /* Evita que o texto quebre */
-}
-.dashboard-action-card button:hover {
-    background-color: #005fa3;
-}
-.dashboard-action-card button:disabled {
-    background-color: #a0aec0;
-    cursor: not-allowed;
-}
+.feedback-section h2 { text-align: center; color: #333; }
+.feedback-section p { text-align: center; color: #555; font-size: 14px; }
+.feedback-link { display: block; width: fit-content; margin: 15px auto 0 auto; padding: 10px 20px; background-color: #0078d7; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background-color 0.2s; }
+.feedback-link:hover { background-color: #005fa3; }

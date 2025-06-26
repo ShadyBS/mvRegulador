@@ -7,22 +7,59 @@
   </head>
   <body>
     <h1>Configurações</h1>
-    <form id="settings-form">
-      <div class="form-group">
-        <label for="itemsPerPage">Itens por página nas tabelas:</label>
-        <input type="number" id="itemsPerPage" name="itemsPerPage" min="5" max="50" />
+
+    <fieldset class="settings-section">
+      <legend>Geral</legend>
+      <form id="settings-form">
+        <div class="form-group">
+          <label for="itemsPerPage">Itens por página nas tabelas:</label>
+          <input type="number" id="itemsPerPage" name="itemsPerPage" min="5" max="50" />
+        </div>
+        <button type="submit">Guardar Gerais</button>
+      </form>
+    </fieldset>
+
+    <fieldset class="settings-section">
+      <legend>Gerenciador de Tags Clínicas</legend>
+      <div id="tag-builder">
+        <div class="form-group">
+          <label for="tagName">Nome da Nova Tag:</label>
+          <input
+            type="text"
+            id="tagName"
+            placeholder="Ex: Hipertenso, Risco Cardiovascular"
+          />
+        </div>
+        <div class="form-group">
+          <label for="tagCodeSearch"
+            >Pesquisar e Adicionar Códigos (CID10/CIAP2):</label
+          >
+          <input
+            type="text"
+            id="tagCodeSearch"
+            placeholder="Pesquise por nome ou código (ex: diabetes, I10)"
+          />
+          <div id="code-search-results"></div>
+        </div>
+        <div class="form-group">
+          <label>Códigos Associados a esta Tag:</label>
+          <div id="associated-codes" class="pills-container">
+            <!-- Pills dos códigos selecionados aparecerão aqui -->
+          </div>
+        </div>
+        <button id="addTagBtn" type="button">Adicionar/Atualizar Tag</button>
       </div>
-      <div class="form-group">
-        <label for="prontuarioPeriodoPadrao">Período Padrão do Prontuário:</label>
-        <select id="prontuarioPeriodoPadrao" name="prontuarioPeriodoPadrao">
-          <option value="last_year">Último ano</option>
-          <option value="last_6_months">Últimos 6 meses</option>
-          <option value="all_time">Todo o período</option>
-        </select>
+    </fieldset>
+
+    <fieldset class="settings-section">
+      <legend>Tags Salvas</legend>
+      <div id="tag-list">
+        <!-- Lista de tags salvas aparecerá aqui -->
       </div>
-      <button type="submit">Guardar</button>
-    </form>
+    </fieldset>
+
     <div id="status"></div>
+
     <div class="feedback-section">
       <h2>Feedback & Suporte</h2>
       <p>Encontrou um problema ou tem uma sugestão? Ajude a melhorar a extensão!</p>
@@ -33,6 +70,7 @@
         >Reportar um Problema ou Sugerir Melhoria</a
       >
     </div>
-    <script src="options.js"></script>
+
+    <script type="module" src="options.js"></script>
   </body>
 </html>

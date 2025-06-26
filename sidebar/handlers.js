@@ -352,11 +352,52 @@ function calcularDatas(periodo) {
  */
 function renderAllSections(user) {
     renderDashboard(user);
+    applyPatientTags(user); // Nova chamada para aplicar as tags
     renderComparacaoCadsus(user);
     renderCompromissos(user);
     renderListaEspera(user);
     renderRegulacoes(user);
     renderAgendamentosExame(user);
+}
+
+/**
+ * Busca o prontuário, extrai os códigos e aplica as tags configuradas.
+ * @param {object} user - O objeto do utilizador.
+ */
+async function applyPatientTags(user) {
+    const container = document.getElementById('patient-tags-container');
+    container.innerHTML = '<span style="font-size:12px; color:#555;">A analisar prontuário para tags...</span>';
+  
+    try {
+      const { prontuarioPeriodoPadrao } = state.settings;
+      const { dataInicial, dataFinal } = calcularDatas(prontuarioPeriodoPadrao);
+  
+      const prontuarioText = await api.fetchProntuarioText({
+        isenFullPKCrypto: user.isenFullPKCrypto,
+        dataInicial,
+        dataFinal,
+      });
+      
+      const codesInProntuario = parser.extractCodes(prontuarioText);
+      
+      if (codesInProntuario.size === 0) {
+          container.innerHTML = '';
+          return;
+      }
+  
+      // Carrega as tags salvas e compara
+      chrome.storage.sync.get({ clinicalTags: [] }, (data) => {
+          const matchingTags = data.clinicalTags.filter(tag => 
+              tag.codes.some(code => codesInProntuario.has(code))
+          ).map(tag => tag.tagName);
+          
+          ui.renderPatientTags(matchingTags);
+      });
+  
+    } catch (error) {
+      logError(error, 'applyPatientTags');
+      container.innerHTML = `<span style="font-size:12px; color:#c00;">Erro ao analisar tags.</span>`;
+    }
 }
 
 /**

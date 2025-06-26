@@ -158,6 +158,23 @@ export function renderSkeleton(container, rows = 5, cols = 4) {
     container.innerHTML = skeletonHTML;
 }
 
+/**
+ * Renderiza as tags do paciente na UI.
+ * @param {Array<string>} tags - Um array com os nomes das tags a serem exibidas.
+ */
+export function renderPatientTags(tags) {
+  const container = document.getElementById('patient-tags-container');
+  container.innerHTML = ''; // Limpa as tags anteriores
+  if (tags.length > 0) {
+    tags.forEach(tagName => {
+      const tagEl = document.createElement('div');
+      tagEl.className = 'patient-tag';
+      tagEl.textContent = tagName;
+      container.appendChild(tagEl);
+    });
+  }
+}
+
 
 /**
  * Função genérica para criar uma secção com título, filtros (opcional) e uma tabela paginada.

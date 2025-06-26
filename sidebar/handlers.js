@@ -126,6 +126,7 @@ export async function handleSelectSuggestion(index) {
 function clearAllSections() {
     document.getElementById('cardUsuario').innerHTML = '';
     document.getElementById('dashboard-container').innerHTML = '';
+    document.getElementById('patient-tags-container').innerHTML = '';
     document.getElementById('compromissosTabela').innerHTML = '';
     document.getElementById('listaEsperaUsuario').innerHTML = '';
     document.getElementById('regulacaoPanel').innerHTML = '';
@@ -353,12 +354,38 @@ function calcularDatas(periodo) {
  */
 function renderAllSections(user) {
     renderDashboard(user);
-    applyPatientTags(user); // Nova chamada para aplicar as tags
+    applyPatientTags(user);
     renderComparacaoCadsus(user);
     renderCompromissos(user);
     renderListaEspera(user);
     renderRegulacoes(user);
     renderAgendamentosExame(user);
+}
+
+/**
+ * Verifica se uma única regra de palavra-chave corresponde ao texto do prontuário.
+ * @param {object} rule - A regra a ser testada.
+ * @param {string} prontuarioText - O texto do prontuário em minúsculas.
+ * @returns {boolean} - True se a regra corresponder, senão false.
+ */
+function checkKeywordRule(rule, prontuarioText) {
+  const value = rule.value.toLowerCase();
+  switch (rule.matchType) {
+    case 'contains':
+      return prontuarioText.includes(value);
+    case 'not_contains':
+      return !prontuarioText.includes(value);
+    case 'regex':
+      try {
+        // 'i' flag para case-insensitive
+        return new RegExp(rule.value, 'i').test(prontuarioText);
+      } catch (e) {
+        console.warn(`Regex inválida na tag: "${rule.value}". Erro:`, e);
+        return false; // Regex inválida não corresponde
+      }
+    default:
+      return false;
+  }
 }
 
 /**
@@ -379,19 +406,36 @@ async function applyPatientTags(user) {
         dataFinal,
       });
       
+      const prontuarioTextLower = prontuarioText.toLowerCase();
       const codesInProntuario = parser.extractCodes(prontuarioText);
       
-      if (codesInProntuario.size === 0) {
-          container.innerHTML = '';
-          return;
-      }
-  
-      // Carrega as tags salvas e compara
       chrome.storage.sync.get({ clinicalTags: [] }, (data) => {
-          const matchingTags = data.clinicalTags.filter(tag => 
-              // LÓGICA ATUALIZADA para a nova estrutura de dados
-              tag.codes.some(codeObj => codesInProntuario.has(codeObj.code))
-          ).map(tag => tag.tagName);
+          const allTags = data.clinicalTags || [];
+          const matchingTags = [];
+
+          allTags.forEach(tag => {
+              const type = tag.type || 'code'; // Assume 'code' por defeito para retrocompatibilidade
+              let isMatch = false;
+
+              if (type === 'code') {
+                  const items = tag.items || tag.codes || []; // Retrocompatibilidade com 'codes'
+                  isMatch = items.some(item => codesInProntuario.has(item.code));
+              } else if (type === 'keyword') {
+                  const logic = tag.matchLogic || 'OR';
+                  const rules = tag.items || [];
+                  if (rules.length > 0) {
+                      if (logic === 'AND') {
+                          isMatch = rules.every(rule => checkKeywordRule(rule, prontuarioTextLower));
+                      } else { // OR
+                          isMatch = rules.some(rule => checkKeywordRule(rule, prontuarioTextLower));
+                      }
+                  }
+              }
+
+              if (isMatch) {
+                  matchingTags.push(tag.tagName);
+              }
+          });
           
           ui.renderPatientTags(matchingTags);
       });

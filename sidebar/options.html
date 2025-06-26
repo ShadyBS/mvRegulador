@@ -32,60 +32,101 @@
     <fieldset class="settings-section">
       <legend>Gerenciador de Tags Clínicas</legend>
       <div id="tag-builder">
+        <!-- Nome da Tag (comum a ambos os tipos) -->
         <div class="form-group">
           <label for="tagName">Nome da Nova Tag (ou editar existente):</label>
           <input
             type="text"
             id="tagName"
-            placeholder="Ex: Hipertenso, Risco Cardiovascular"
+            placeholder="Ex: Risco Cardiovascular, Acamado, Alergias"
           />
         </div>
+
+        <!-- Seletor de Tipo de Tag -->
         <div class="form-group">
-          <label for="tagCodeSearch">Pesquisar Códigos (CID10/CIAP2):</label>
-          <input
-            type="text"
-            id="tagCodeSearch"
-            placeholder="Pesquise por nome ou código (ex: diabetes, I10, z000)"
-          />
-          <!-- Container para os resultados da pesquisa e botões de ação -->
-          <div id="search-container" class="search-container">
-            <div id="code-search-results"></div>
-            <div id="search-actions" class="search-actions" style="display: none">
-              <div class="selection-toggles">
-                <button type="button" id="selectAllBtn" class="link-button">
-                  Selecionar Todos
-                </button>
-                <span>|</span>
-                <button type="button" id="deselectAllBtn" class="link-button">
-                  Limpar Seleção
-                </button>
-              </div>
-              <div class="main-actions">
-                <button id="addSelectedBtn" type="button">
-                  Adicionar Selecionados
-                </button>
-                <button id="clearSearchBtn" type="button" class="secondary">
-                  Limpar Busca
-                </button>
+          <label>Tipo de Tag:</label>
+          <div class="tag-type-selector">
+            <input type="radio" id="typeCode" name="tagType" value="code" checked />
+            <label for="typeCode">Por Código (CID/CIAP)</label>
+            <input type="radio" id="typeKeyword" name="tagType" value="keyword" />
+            <label for="typeKeyword">Por Palavra-Chave</label>
+          </div>
+        </div>
+
+        <!-- Container do Construtor de Códigos -->
+        <div id="code-builder-container">
+          <div class="form-group">
+            <label for="tagCodeSearch">Pesquisar Códigos:</label>
+            <input
+              type="text"
+              id="tagCodeSearch"
+              placeholder="Pesquise por nome (ex: diabetes) ou código (ex: I10)"
+            />
+            <div id="search-container" class="search-container">
+              <div id="code-search-results"></div>
+              <div id="search-actions" class="search-actions" style="display: none">
+                <div class="selection-toggles">
+                  <button type="button" id="selectAllBtn" class="link-button">
+                    Selecionar Todos
+                  </button>
+                  <span>|</span>
+                  <button type="button" id="deselectAllBtn" class="link-button">
+                    Limpar Seleção
+                  </button>
+                </div>
+                <div class="main-actions">
+                  <button id="addSelectedBtn" type="button">
+                    Adicionar Selecionados
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="form-group">
-          <label>Códigos Associados a esta Tag:</label>
-          <div id="associated-codes" class="pills-container">
-            <!-- Pills dos códigos selecionados aparecerão aqui -->
+
+        <!-- Container do Construtor de Palavras-Chave -->
+        <div id="keyword-builder-container" style="display: none">
+          <div class="form-group">
+            <label>Lógica de Combinação das Regras:</label>
+            <div class="tag-type-selector">
+              <input type="radio" id="logicOR" name="matchLogic" value="OR" checked />
+              <label for="logicOR">Corresponder a QUALQUER UMA (OU)</label>
+              <input type="radio" id="logicAND" name="matchLogic" value="AND" />
+              <label for="logicAND">Corresponder a TODAS (E)</label>
+            </div>
+          </div>
+          <div class="rule-builder form-group">
+            <label>Adicionar Nova Regra:</label>
+            <div class="rule-input-group">
+              <select id="ruleMatchType">
+                <option value="contains" selected>Contém</option>
+                <option value="not_contains">Não Contém</option>
+                <option value="regex">Regex</option>
+              </select>
+              <input
+                type="text"
+                id="ruleValue"
+                placeholder="Digite a palavra-chave ou regex"
+              />
+              <button id="addRuleBtn" type="button">Adicionar Regra</button>
+            </div>
+            <div id="regex-validator"></div>
           </div>
         </div>
-        <button id="addTagBtn" type="button">Guardar Tag</button>
+
+        <!-- Lista de Itens (comum a ambos os tipos) -->
+        <div class="form-group">
+          <label>Itens Associados a esta Tag:</label>
+          <div id="associated-items" class="pills-container"></div>
+        </div>
+
+        <button id="saveTagBtn" type="button">Guardar Tag</button>
       </div>
     </fieldset>
 
     <fieldset class="settings-section">
       <legend>Tags Salvas</legend>
-      <div id="tag-list">
-        <!-- Lista de tags salvas aparecerá aqui -->
-      </div>
+      <div id="tag-list"></div>
     </fieldset>
 
     <div id="status"></div>
